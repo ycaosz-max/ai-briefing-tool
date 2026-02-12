@@ -207,7 +207,7 @@ with col2:
     
     briefing_type = st.selectbox(
         "简报类型",
-        ["工作日报", "会议纪要", "学习笔记", "新闻摘要"],
+        ["会议纪要", "工作日报", "学习笔记", "新闻摘要"],
         key="briefing_type"
     )
     
@@ -236,8 +236,8 @@ with col2:
                         client = OpenAI(api_key=api_key, base_url="https://api.siliconflow.cn/v1")
                         
                         prompts = {
-                            "工作日报": "整理成工作日报：1完成 2问题 3计划",
                             "会议纪要": "整理成会议纪要：1主题 2讨论 3决议 4待办",
+                            "工作日报": "整理成工作日报：1完成 2问题 3计划",
                             "学习笔记": "整理成学习笔记：1概念 2重点 3思考",
                             "新闻摘要": "整理成新闻摘要：1事件 2数据 3影响"
                         }
@@ -280,3 +280,4 @@ with col2:
 
 st.divider()
 st.caption("Made with ❤️ | 语音版v2.1.1 - iOS 优化版")
+
