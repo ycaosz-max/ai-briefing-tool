@@ -1,5 +1,5 @@
-# AI简报小助手 - 语音版v2.1.2 (风格优化版)
-# 优化：统一字体、圆角、配色，借鉴苹果设计精髓
+# AI简报小助手 - 语音版v2.1.1 (iOS 修复版)
+# 修复：iPhone 上 API 密钥输入框无响应问题
 
 import streamlit as st
 from openai import OpenAI
@@ -13,183 +13,35 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# ========== 统一风格 CSS ==========
+# 关键修复：iOS Safari 兼容样式
 st.markdown("""
 <style>
-/* 统一字体系统 - 借鉴苹果系统字体栈 */
+/* iOS 基础修复 */
 * {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
 }
 
-/* 统一设计变量 */
-:root {
-    --primary: #007AFF;
-    --success: #34C759;
-    --warning: #FF9500;
-    --danger: #FF3B30;
-    --gray: #8E8E93;
-    --light-gray: #F2F2F7;
-    --border: #E5E5EA;
-    --radius: 10px;
-    --radius-sm: 8px;
-}
-
-/* 页面背景 */
-.stApp {
-    background-color: #FAFAFA !important;
-}
-
-/* 标题样式 */
-.big-title {
-    font-size: 28px !important;
-    font-weight: 700 !important;
-    color: #1C1C1E !important;
-    text-align: center !important;
-    margin-bottom: 4px !important;
-    letter-spacing: -0.3px !important;
-}
-
-.subtitle {
-    font-size: 15px !important;
-    font-weight: 400 !important;
-    color: var(--gray) !important;
-    text-align: center !important;
-    margin-bottom: 20px !important;
-}
-
-/* 统一卡片/提示框 - 圆角阴影 */
-.stAlert {
-    border-radius: var(--radius) !important;
-    border: none !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
-    padding: 16px !important;
-}
-
-/* 警告框 */
-div[data-testid="stAlertContainer"][data-kind="warning"] {
-    background-color: #FFF8E6 !important;
-    border-left: 3px solid var(--warning) !important;
-}
-
-/* 成功框 */
-.stSuccess {
-    background-color: #E8F8F0 !important;
-    border-left: 3px solid var(--success) !important;
-    color: #1C1C1E !important;
-}
-
-/* 错误框 */
-.stError {
-    background-color: #FFEBEA !important;
-    border-left: 3px solid var(--danger) !important;
-    color: #1C1C1E !important;
-}
-
-/* 信息框 */
-.stInfo {
-    background-color: #E8F4FD !important;
-    border-left: 3px solid var(--primary) !important;
-    color: #1C1C1E !important;
-}
-
-/* 统一输入框 */
+/* 输入框 iOS 修复 */
 .stTextInput input, .stTextArea textarea {
     -webkit-appearance: none !important;
-    font-size: 16px !important;
-    border-radius: var(--radius-sm) !important;
-    border: 1px solid var(--border) !important;
-    background-color: white !important;
-    padding: 10px 14px !important;
-    color: #1C1C1E !important;
+    -webkit-user-select: text !important;
+    user-select: text !important;
+    font-size: 16px !important; /* iOS 小于16px会缩放 */
+    touch-action: manipulation;
 }
 
-.stTextInput input:focus, .stTextArea textarea:focus {
-    border-color: var(--primary) !important;
-    box-shadow: 0 0 0 3px rgba(0,122,255,0.08) !important;
-}
-
-/* 统一按钮 */
-.stButton > button {
-    border-radius: var(--radius-sm) !important;
-    font-size: 15px !important;
-    font-weight: 500 !important;
-    padding: 8px 20px !important;
-    transition: all 0.2s !important;
-}
-
-.stButton > button[kind="primary"] {
-    background-color: var(--primary) !important;
-    color: white !important;
-    border: none !important;
-}
-
-.stButton > button[kind="primary"]:hover {
-    background-color: #0063CC !important;
-}
-
-.stButton > button[kind="secondary"] {
-    background-color: var(--light-gray) !important;
-    color: var(--primary) !important;
-    border: none !important;
-}
-
-/* 统一选择框 */
-.stSelectbox > div > div {
-    border-radius: var(--radius-sm) !important;
-    border: 1px solid var(--border) !important;
-    background-color: white !important;
-}
-
-/* 统一文件上传 */
-.stFileUploader > div > div {
-    border-radius: var(--radius) !important;
-    border: 1.5px dashed #D1D1D6 !important;
-    background-color: white !important;
-}
-
-.stFileUploader > div > div:hover {
-    border-color: var(--primary) !important;
-    background-color: #F5F9FF !important;
-}
-
-/* 统一分割线 */
-hr {
-    border: none !important;
-    height: 0.5px !important;
-    background-color: var(--border) !important;
-    margin: 20px 0 !important;
-}
-
-/* 子标题 */
-.stSubheader {
-    font-size: 18px !important;
-    font-weight: 600 !important;
-    color: #1C1C1E !important;
-    margin-bottom: 12px !important;
-}
-
-/* 侧边栏 */
-section[data-testid="stSidebar"] {
-    background-color: white !important;
-}
-
-/* 提示卡片 */
-div[data-testid="stMarkdownContainer"] div {
-    border-radius: var(--radius) !important;
+/* 按钮 iOS 修复 */
+.stButton button {
+    -webkit-appearance: none;
+    touch-action: manipulation;
 }
 
 /* 移动端适配 */
 @media (max-width: 768px) {
     .big-title { font-size: 24px !important; }
     .subtitle { font-size: 14px !important; }
-    .main .block-container { padding: 1rem !important; }
-}
-
-/* 加载动画颜色 */
-.stSpinner > div {
-    border-top-color: var(--primary) !important;
+    .main .block-container { padding: 1rem; }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -198,21 +50,26 @@ div[data-testid="stMarkdownContainer"] div {
 st.markdown('<p class="big-title">🎙️ AI语音简报助手</p>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">语音直接转文字，自动生成简报</p>', unsafe_allow_html=True)
 
-# ========== API 密钥管理 ==========
+# ========== 关键修复：将API输入移到主界面，避免侧边栏点击问题 ==========
+
+# 先检查是否有API密钥（环境变量或之前输入）
 api_key = st.session_state.get("api_key", "")
 
 if not api_key:
+    # 主界面显示API输入（不在侧边栏）
     st.warning("⚠️ 首次使用需要输入 API 密钥")
     
     with st.expander("🔑 点击此处输入 API 密钥", expanded=True):
         st.markdown("""
         **获取步骤：**
-        1. 访问 [硅基流动](https://cloud.siliconflow.cn/i/nZqCjymq )
+        1. 访问 [硅基流动](https://cloud.siliconflow.cn/i/nZqCjymq)
         2. 注册并完成实名认证
         3. 创建您的API 密钥
         4. 复制到下方输入框
         """)
         
+        # 关键修复：使用 st.text_area 代替 st.text_input，iOS 兼容性更好
+        # 或者用 st.text_input 但添加 key 和 on_change
         api_input = st.text_input(
             "API 密钥",
             value="",
@@ -222,6 +79,7 @@ if not api_key:
             help="密钥以 sk- 开头"
         )
         
+        # iOS 修复：添加明确的确认按钮
         if st.button("✅ 确认并保存", type="primary", key="save_api_key"):
             if api_input and api_input.startswith("sk-"):
                 st.session_state.api_key = api_input
@@ -230,9 +88,9 @@ if not api_key:
             else:
                 st.error("❌ 请输入正确的 API 密钥（以 sk- 开头）")
     
-    st.stop()
+    st.stop()  # 没有密钥时不显示后续内容
 
-# ========== 侧边栏 ==========
+# ========== 侧边栏（简化版，避免iOS问题） ==========
 with st.sidebar:
     st.header("⚙️ 设置")
     st.success("✅ API 已配置")
@@ -275,9 +133,10 @@ col1, col2 = st.columns([1, 1])
 with col1:
     st.subheader("🎤 语音输入")
     
+    # 方式一：实时录音
     st.markdown("""
-    <div style="background-color: #F2F2F7; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
-        <h4 style="margin: 0 0 8px 0; color: #1C1C1E;">方式一：实时录音转文字</h4>
+    <div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
+        <h4>方式一：实时录音转文字</h4>
         <p style="color: #666; font-size: 14px; margin: 0;">
             📱 iPhone 提示：请使用 Safari 浏览器<br>
             点击录音 → 说话 → 自动转写填入右侧
@@ -288,6 +147,7 @@ with col1:
     try:
         from streamlit_mic_recorder import mic_recorder
         
+        # iOS 修复：添加帮助提示
         audio = mic_recorder(
             start_prompt="🎙️ 点击开始录音",
             stop_prompt="⏹️ 点击停止",
@@ -311,8 +171,10 @@ with col1:
     
     st.divider()
     
+    # 方式二：上传录音（iOS 更可靠的方式）
     st.subheader("📁 方式二：上传录音")
     
+    # iOS 提示
     st.info("""
     💡 **iPhone 用户推荐此方式**：
     1. 用"语音备忘录"录好音
@@ -417,4 +279,4 @@ with col2:
         )
 
 st.divider()
-st.caption("Made with ❤️ | 语音版v2.1.2 - 风格优化版")
+st.caption("Made with ❤️ | 语音版v2.1.1 - iOS 优化版")
