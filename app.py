@@ -63,7 +63,7 @@ if not api_key:
         st.markdown("""
         **获取步骤：**
         1. 访问 [硅基流动](https://cloud.siliconflow.cn/i/nZqCjymq)
-        2. 手机号注册（送14元额度）
+        2. 手机号注册并完成实名认证（送16元代金券）
         3. 创建 API 密钥
         4. 复制到下方输入框
         """)
@@ -280,6 +280,7 @@ with col2:
 
 st.divider()
 st.caption("Made with ❤️ | 语音版v2.1.1 - iOS 优化版")
+
 
 
 
