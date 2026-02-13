@@ -10,51 +10,248 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# ========== iOS 兼容样式（增强版） ==========
+# ========== iOS 暗黑/明亮模式自动切换样式 ==========
 st.markdown("""
 <style>
-/* iOS 基础修复 */
+/* ========== 基础变量定义 ========== */
+:root {
+    /* 明亮模式默认 */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f0f2f6;
+    --bg-card: #ffffff;
+    --text-primary: #1f1f1f;
+    --text-secondary: #666666;
+    --border-color: #e0e0e0;
+    --accent-color: #ff4b4b;
+    --accent-hover: #ff3333;
+    --shadow: rgba(0, 0, 0, 0.1);
+    --input-bg: #ffffff;
+    --input-text: #1f1f1f;
+    --button-text: #ffffff;
+}
+
+/* ========== iOS 暗黑模式检测 ========== */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-primary: #000000;
+        --bg-secondary: #1c1c1e;
+        --bg-card: #2c2c2e;
+        --text-primary: #ffffff;
+        --text-secondary: #8e8e93;
+        --border-color: #38383a;
+        --accent-color: #0a84ff;
+        --accent-hover: #409cff;
+        --shadow: rgba(0, 0, 0, 0.5);
+        --input-bg: #1c1c1e;
+        --input-text: #ffffff;
+        --button-text: #ffffff;
+    }
+    
+    /* Streamlit 暗黑模式覆盖 */
+    .stApp {
+        background-color: var(--bg-primary) !important;
+    }
+    
+    .stTextInput input, .stTextArea textarea {
+        background-color: var(--input-bg) !important;
+        color: var(--input-text) !important;
+        border-color: var(--border-color) !important;
+    }
+    
+    .stSelectbox > div > div {
+        background-color: var(--bg-card) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    .stExpander {
+        background-color: var(--bg-card) !important;
+        border-color: var(--border-color) !important;
+    }
+    
+    .stMarkdown {
+        color: var(--text-primary) !important;
+    }
+    
+    /* 侧边栏暗黑模式 */
+    .css-1d391kg, .css-1lcbmhc {
+        background-color: var(--bg-secondary) !important;
+    }
+}
+
+/* ========== iOS 基础修复 ========== */
 * {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
 }
 
-/* 输入框 iOS 修复 - 增强版 */
+/* ========== 全局样式应用 ========== */
+.stApp {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* 标题样式 */
+.big-title {
+    font-size: 32px;
+    font-weight: bold;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    transition: color 0.3s ease;
+}
+
+.subtitle {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    transition: color 0.3s ease;
+}
+
+/* 输入框样式 - 自动适应主题 */
 .stTextInput input, .stTextArea textarea {
     -webkit-appearance: none !important;
     -webkit-user-select: text !important;
     user-select: text !important;
     font-size: 16px !important;
     touch-action: manipulation;
-    -webkit-border-radius: 8px;
+    -webkit-border-radius: 10px;
+    border-radius: 10px;
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
 }
 
-/* 修复 iOS 输入框焦点问题 */
+/* 输入框焦点样式 */
 .stTextInput input:focus, .stTextArea textarea:focus {
     outline: none !important;
-    border-color: #ff4b4b !important;
-    box-shadow: 0 0 0 2px rgba(255, 75, 75, 0.2) !important;
+    border-color: var(--accent-color) !important;
+    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.3) !important;
 }
 
-/* 按钮 iOS 修复 */
+/* 按钮样式 - 高对比度 */
 .stButton button {
     -webkit-appearance: none;
     touch-action: manipulation;
-    -webkit-border-radius: 8px;
+    -webkit-border-radius: 10px;
+    border-radius: 10px;
+    background-color: var(--accent-color) !important;
+    color: var(--button-text) !important;
+    border: none !important;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.stButton button:hover {
+    background-color: var(--accent-hover) !important;
+    transform: translateY(-1px);
+}
+
+.stButton button:active {
+    transform: translateY(0);
+}
+
+/* 卡片/容器样式 */
+.stExpander {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+/* 信息框样式 - 暗黑模式适配 */
+.stAlert {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.stInfo {
+    background-color: rgba(10, 132, 255, 0.1) !important;
+    border-left-color: var(--accent-color) !important;
+}
+
+.stSuccess {
+    background-color: rgba(48, 209, 88, 0.1) !important;
+    border-left-color: #30d158 !important;
+}
+
+.stWarning {
+    background-color: rgba(255, 159, 10, 0.1) !important;
+    border-left-color: #ff9f0a !important;
+}
+
+.stError {
+    background-color: rgba(255, 69, 58, 0.1) !important;
+    border-left-color: #ff453a !important;
+}
+
+/* 文件上传区域 */
+.stFileUploader > div > div {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+/* 分割线 */
+hr {
+    border-color: var(--border-color) !important;
+}
+
+/* 下载按钮 */
+.stDownloadButton button {
+    background-color: var(--bg-card) !important;
+    color: var(--accent-color) !important;
+    border: 2px solid var(--accent-color) !important;
+}
+
+.stDownloadButton button:hover {
+    background-color: var(--accent-color) !important;
+    color: var(--button-text) !important;
+}
+
+/* 侧边栏样式 */
+.css-1d391kg, .css-1lcbmhc, [data-testid="stSidebar"] {
+    background-color: var(--bg-secondary) !important;
+}
+
+/* 选择框样式 */
+.stSelectbox > div > div {
+    background-color: var(--bg-card);
+    border-color: var(--border-color) !important;
+    color: var(--text-primary);
+    border-radius: 10px;
 }
 
 /* 移动端适配 */
 @media (max-width: 768px) {
-    .big-title { font-size: 24px !important; }
-    .subtitle { font-size: 14px !important; }
-    .main .block-container { padding: 1rem; }
+    .big-title { 
+        font-size: 26px !important; 
+    }
+    .subtitle { 
+        font-size: 14px !important; 
+    }
+    .main .block-container { 
+        padding: 1rem; 
+    }
     
     /* iOS 安全区域适配 */
     .stApp {
         padding-bottom: env(safe-area-inset-bottom);
     }
 }
+
+/* 平滑过渡动画 */
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
 </style>
+
+<!-- iOS 状态栏颜色适配 -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 """, unsafe_allow_html=True)
 
 # ========== 标题 ==========
@@ -94,9 +291,6 @@ if not api_key:
                     st.rerun()
                 else:
                     st.error("❌ 请输入正确的 API 密钥（以 sk- 开头）")
-        
-        with col2:
-            st.caption("💡 或设置环境变量 `SILICONFLOW_API_KEY`")
     
     st.stop()
 
@@ -110,7 +304,7 @@ with st.sidebar:
         st.rerun()
     
     st.divider()
-    st.caption("💡 AI简报_分享版 v2.1.2")
+    st.caption("💡 AI简报_分享版 v2.2.0")
 
 # ========== 语音转文字函数（修复版） ==========
 def transcribe_audio(audio_bytes, api_key):
@@ -138,7 +332,6 @@ def transcribe_audio(audio_bytes, api_key):
         return {"success": False, "error": str(e)}
     
     finally:
-        # 关键修复：确保临时文件被清理
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
 
@@ -150,16 +343,17 @@ with col1:
     
     # 方式一：实时录音
     st.markdown("""
-    <div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
-        <h4 style="margin-top: 0;">方式一：实时录音转文字</h4>
-        <p style="color: #666; font-size: 14px; margin: 0;">
+    <div style="padding: 15px; border-radius: 12px; margin-bottom: 10px; 
+                background-color: var(--bg-secondary); 
+                border: 1px solid var(--border-color);">
+        <h4 style="margin-top: 0; color: var(--text-primary);">方式一：实时录音</h4>
+        <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">
             📱 iPhone 提示：请使用 Safari 浏览器<br>
             点击录音 → 说话 → 自动转写填入右侧
         </p>
     </div>
     """, unsafe_allow_html=True)
     
-    # 关键修复：添加更完善的错误处理
     try:
         from streamlit_mic_recorder import mic_recorder
         
@@ -300,4 +494,5 @@ with col2:
         )
 
 st.divider()
-st.caption("Made with ❤️ | 语音版v2.1.2 - iOS 优化版")
+st.caption("Made with ❤️ | 语音版v2.2.0 - iOS 自动暗黑模式")
+
