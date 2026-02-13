@@ -62,7 +62,7 @@ if not api_key:
     with st.expander("🔑 点击此处输入 API 密钥", expanded=True):
         st.markdown("""
         **获取步骤：**
-        1. 访问 [siliconflow.cn](https://siliconflow.cn)
+        1. 访问 [硅基流动](https://cloud.siliconflow.cn/i/nZqCjymq)
         2. 手机号注册（送14元额度）
         3. 创建 API 密钥
         4. 复制到下方输入框
@@ -280,5 +280,6 @@ with col2:
 
 st.divider()
 st.caption("Made with ❤️ | 语音版v2.1.1 - iOS 优化版")
+
 
 
