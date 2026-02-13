@@ -10,7 +10,7 @@ import tempfile
 st.set_page_config(
     page_title="AI语音简报助手", 
     page_icon="🎙️",
-    initial_sidebar_state="expanded"  # 关键：默认展开侧边栏，避免iPhone点击问题
+    initial_sidebar_state="auto"
 )
 
 # 关键修复：iOS Safari 兼容样式
@@ -280,4 +280,5 @@ with col2:
 
 st.divider()
 st.caption("Made with ❤️ | 语音版v2.1.1 - iOS 优化版")
+
 
