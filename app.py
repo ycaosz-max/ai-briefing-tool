@@ -1,6 +1,3 @@
-# AI简报小助手 - 语音版v2.1.1 (iOS 修复版)
-# 修复：iPhone 上 API 密钥输入框无响应问题
-
 import streamlit as st
 from openai import OpenAI
 import os
@@ -13,7 +10,7 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# 关键修复：iOS Safari 兼容样式
+# ========== iOS 兼容样式（增强版） ==========
 st.markdown("""
 <style>
 /* iOS 基础修复 */
@@ -22,19 +19,28 @@ st.markdown("""
     -webkit-touch-callout: none;
 }
 
-/* 输入框 iOS 修复 */
+/* 输入框 iOS 修复 - 增强版 */
 .stTextInput input, .stTextArea textarea {
     -webkit-appearance: none !important;
     -webkit-user-select: text !important;
     user-select: text !important;
-    font-size: 16px !important; /* iOS 小于16px会缩放 */
+    font-size: 16px !important;
     touch-action: manipulation;
+    -webkit-border-radius: 8px;
+}
+
+/* 修复 iOS 输入框焦点问题 */
+.stTextInput input:focus, .stTextArea textarea:focus {
+    outline: none !important;
+    border-color: #ff4b4b !important;
+    box-shadow: 0 0 0 2px rgba(255, 75, 75, 0.2) !important;
 }
 
 /* 按钮 iOS 修复 */
 .stButton button {
     -webkit-appearance: none;
     touch-action: manipulation;
+    -webkit-border-radius: 8px;
 }
 
 /* 移动端适配 */
@@ -42,6 +48,11 @@ st.markdown("""
     .big-title { font-size: 24px !important; }
     .subtitle { font-size: 14px !important; }
     .main .block-container { padding: 1rem; }
+    
+    /* iOS 安全区域适配 */
+    .stApp {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -50,13 +61,10 @@ st.markdown("""
 st.markdown('<p class="big-title">🎙️ AI语音简报助手</p>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">语音直接转文字，自动生成简报</p>', unsafe_allow_html=True)
 
-# ========== 关键修复：将API输入移到主界面，避免侧边栏点击问题 ==========
-
-# 先检查是否有API密钥（环境变量或之前输入）
+# ========== API 密钥管理（主界面） ==========
 api_key = st.session_state.get("api_key", "")
 
 if not api_key:
-    # 主界面显示API输入（不在侧边栏）
     st.warning("⚠️ 首次使用需要输入 API 密钥")
     
     with st.expander("🔑 点击此处输入 API 密钥", expanded=True):
@@ -64,12 +72,10 @@ if not api_key:
         **获取步骤：**
         1. 访问 [硅基流动](https://cloud.siliconflow.cn/i/nZqCjymq)
         2. 注册并完成实名认证
-        3. 创建您的API 密钥
+        3. 创建您的 API 密钥
         4. 复制到下方输入框
         """)
         
-        # 关键修复：使用 st.text_area 代替 st.text_input，iOS 兼容性更好
-        # 或者用 st.text_input 但添加 key 和 on_change
         api_input = st.text_input(
             "API 密钥",
             value="",
@@ -79,18 +85,22 @@ if not api_key:
             help="密钥以 sk- 开头"
         )
         
-        # iOS 修复：添加明确的确认按钮
-        if st.button("✅ 确认并保存", type="primary", key="save_api_key"):
-            if api_input and api_input.startswith("sk-"):
-                st.session_state.api_key = api_input
-                st.success("✅ API 密钥已保存！")
-                st.rerun()
-            else:
-                st.error("❌ 请输入正确的 API 密钥（以 sk- 开头）")
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            if st.button("✅ 确认并保存", type="primary", key="save_api_key"):
+                if api_input and api_input.startswith("sk-"):
+                    st.session_state.api_key = api_input
+                    st.success("✅ API 密钥已保存！")
+                    st.rerun()
+                else:
+                    st.error("❌ 请输入正确的 API 密钥（以 sk- 开头）")
+        
+        with col2:
+            st.caption("💡 或设置环境变量 `SILICONFLOW_API_KEY`")
     
-    st.stop()  # 没有密钥时不显示后续内容
+    st.stop()
 
-# ========== 侧边栏（简化版，避免iOS问题） ==========
+# ========== 侧边栏 ==========
 with st.sidebar:
     st.header("⚙️ 设置")
     st.success("✅ API 已配置")
@@ -100,10 +110,11 @@ with st.sidebar:
         st.rerun()
     
     st.divider()
-    st.caption("💡 AI简报_分享版")
+    st.caption("💡 AI简报_分享版 v2.1.2")
 
-# ========== 语音转文字函数 ==========
+# ========== 语音转文字函数（修复版） ==========
 def transcribe_audio(audio_bytes, api_key):
+    tmp_path = None
     try:
         client = OpenAI(
             api_key=api_key,
@@ -121,11 +132,15 @@ def transcribe_audio(audio_bytes, api_key):
                 response_format="text"
             )
         
-        os.unlink(tmp_path)
         return {"success": True, "text": transcription}
         
     except Exception as e:
         return {"success": False, "error": str(e)}
+    
+    finally:
+        # 关键修复：确保临时文件被清理
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 # ========== 主界面 ==========
 col1, col2 = st.columns([1, 1])
@@ -136,7 +151,7 @@ with col1:
     # 方式一：实时录音
     st.markdown("""
     <div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
-        <h4>方式一：实时录音转文字</h4>
+        <h4 style="margin-top: 0;">方式一：实时录音转文字</h4>
         <p style="color: #666; font-size: 14px; margin: 0;">
             📱 iPhone 提示：请使用 Safari 浏览器<br>
             点击录音 → 说话 → 自动转写填入右侧
@@ -144,15 +159,15 @@ with col1:
     </div>
     """, unsafe_allow_html=True)
     
+    # 关键修复：添加更完善的错误处理
     try:
         from streamlit_mic_recorder import mic_recorder
         
-        # iOS 修复：添加帮助提示
         audio = mic_recorder(
             start_prompt="🎙️ 点击开始录音",
             stop_prompt="⏹️ 点击停止",
             just_once=True,
-            key="mic_recorder_ios"
+            key="mic_recorder_ios_v2"
         )
         
         if audio and audio.get("bytes"):
@@ -167,14 +182,16 @@ with col1:
                     st.error(f"❌ 转写失败：{result['error']}")
                     
     except ImportError:
-        st.error("⚠️ 录音组件加载失败")
+        st.error("⚠️ 录音组件加载失败，请使用方式二上传文件")
+    except Exception as e:
+        st.error(f"⚠️ 录音功能异常：{str(e)}")
+        st.info("请尝试使用方式二上传录音文件")
     
     st.divider()
     
-    # 方式二：上传录音（iOS 更可靠的方式）
+    # 方式二：上传录音（iOS 推荐）
     st.subheader("📁 方式二：上传录音")
     
-    # iOS 提示
     st.info("""
     💡 **iPhone 用户推荐此方式**：
     1. 用"语音备忘录"录好音
@@ -184,14 +201,14 @@ with col1:
     
     audio_file = st.file_uploader(
         "选择录音文件", 
-        type=['mp3', 'wav', 'm4a', 'webm'],
-        help="支持 mp3, wav, m4a 格式"
+        type=['mp3', 'wav', 'm4a', 'webm', 'ogg'],
+        help="支持 mp3, wav, m4a, webm, ogg 格式"
     )
     
     if audio_file:
         st.audio(audio_file, format=f'audio/{audio_file.type.split("/")[1]}')
         
-        if st.button("🎯 开始转写", type="primary"):
+        if st.button("🎯 开始转写", type="primary", key="transcribe_upload"):
             with st.spinner("🤖 正在识别..."):
                 result = transcribe_audio(audio_file.getvalue(), api_key)
                 
@@ -217,13 +234,13 @@ with col2:
         "编辑内容",
         value=default_text,
         height=300,
-        placeholder="语音转写内容会出现在这里..."
+        placeholder="语音转写内容会出现在这里，您也可以直接输入..."
     )
     
     if content != st.session_state.get("transcribed_text", ""):
         st.session_state.transcribed_text = content
     
-    custom_req = st.text_input("特殊要求", placeholder="例如：重点突出数据")
+    custom_req = st.text_input("特殊要求", placeholder="例如：重点突出数据、使用 bullet points")
     
     col_gen, col_clear = st.columns([3, 1])
     with col_gen:
@@ -233,7 +250,10 @@ with col2:
             else:
                 with st.spinner("🤖 生成中..."):
                     try:
-                        client = OpenAI(api_key=api_key, base_url="https://api.siliconflow.cn/v1")
+                        client = OpenAI(
+                            api_key=api_key, 
+                            base_url="https://api.siliconflow.cn/v1"
+                        )
                         
                         prompts = {
                             "会议纪要": "整理成会议纪要：1主题 2讨论 3决议 4待办",
@@ -275,8 +295,9 @@ with col2:
         st.download_button(
             "📋 下载",
             st.session_state.generated_result,
-            file_name=f"简报_{briefing_type}.txt"
+            file_name=f"简报_{briefing_type}.txt",
+            mime="text/plain"
         )
 
 st.divider()
-st.caption("Made with ❤️ | 语音版v2.1.1 - iOS 优化版")
+st.caption("Made with ❤️ | 语音版v2.1.2 - iOS 优化版")
