@@ -10,10 +10,12 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# ========== iOS 暗黑/明亮模式 + 实时字节数显示 ==========
+# ========== iOS 暗黑/明亮模式自动切换样式 ==========
 st.markdown("""
 <style>
+/* ========== 基础变量定义 ========== */
 :root {
+    /* 明亮模式默认 */
     --bg-primary: #ffffff;
     --bg-secondary: #f0f2f6;
     --bg-card: #ffffff;
@@ -26,9 +28,9 @@ st.markdown("""
     --input-bg: #ffffff;
     --input-text: #1f1f1f;
     --button-text: #ffffff;
-    --timer-bg: #ff3b30;
 }
 
+/* ========== iOS 暗黑模式检测 ========== */
 @media (prefers-color-scheme: dark) {
     :root {
         --bg-primary: #000000;
@@ -43,133 +45,95 @@ st.markdown("""
         --input-bg: #1c1c1e;
         --input-text: #ffffff;
         --button-text: #ffffff;
-        --timer-bg: #0a84ff;
     }
-    .stApp { background-color: #000000 !important; }
+    
+    /* Streamlit 暗黑模式覆盖 */
+    .stApp {
+        background-color: var(--bg-primary) !important;
+    }
+    
     .stTextInput input, .stTextArea textarea {
-        background-color: #1c1c1e !important;
-        color: #ffffff !important;
-        border-color: #38383a !important;
+        background-color: var(--input-bg) !important;
+        color: var(--input-text) !important;
+        border-color: var(--border-color) !important;
     }
+    
     .stSelectbox > div > div {
-        background-color: #2c2c2e !important;
-        color: #ffffff !important;
+        background-color: var(--bg-card) !important;
+        color: var(--text-primary) !important;
     }
-    [data-testid="stSidebar"] {
-        background-color: #1c1c1e !important;
+    
+    .stExpander {
+        background-color: var(--bg-card) !important;
+        border-color: var(--border-color) !important;
+    }
+    
+    .stMarkdown {
+        color: var(--text-primary) !important;
+    }
+    
+    /* 侧边栏暗黑模式 */
+    .css-1d391kg, .css-1lcbmhc {
+        background-color: var(--bg-secondary) !important;
     }
 }
 
+/* ========== iOS 基础修复 ========== */
 * {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
 }
 
+/* ========== 全局样式应用 ========== */
 .stApp {
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    transition: all 0.3s ease;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* 标题样式 */
 .big-title {
     font-size: 32px;
     font-weight: bold;
     color: var(--text-primary);
     margin-bottom: 8px;
+    transition: color 0.3s ease;
 }
 
 .subtitle {
     font-size: 16px;
     color: var(--text-secondary);
     margin-bottom: 24px;
+    transition: color 0.3s ease;
 }
 
-/* ========== 实时录音状态栏（底部固定） ========== */
-.recording-status-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: var(--timer-bg);
-    color: white;
-    padding: 15px 20px;
-    z-index: 999999;
-    transform: translateY(100%);
-    transition: transform 0.3s ease;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    box-shadow: 0 -5px 20px rgba(0,0,0,0.3);
-    padding-bottom: max(15px, env(safe-area-inset-bottom));
-}
-
-.recording-status-bar.active {
-    transform: translateY(0);
-}
-
-.status-item {
-    text-align: center;
-    flex: 1;
-}
-
-.status-item .label {
-    font-size: 11px;
-    opacity: 0.8;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 4px;
-}
-
-.status-item .value {
-    font-size: 20px;
-    font-weight: bold;
-    font-variant-numeric: tabular-nums;
-}
-
-.status-item .unit {
-    font-size: 12px;
-    opacity: 0.7;
-    margin-left: 2px;
-}
-
-.pulse-dot {
-    width: 10px;
-    height: 10px;
-    background: white;
-    border-radius: 50%;
-    animation: blink 1s infinite;
-    display: inline-block;
-    margin-right: 5px;
-}
-
-@keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-}
-
-/* 其他样式 */
+/* 输入框样式 - 自动适应主题 */
 .stTextInput input, .stTextArea textarea {
     -webkit-appearance: none !important;
     -webkit-user-select: text !important;
     user-select: text !important;
     font-size: 16px !important;
     touch-action: manipulation;
+    -webkit-border-radius: 10px;
     border-radius: 10px;
     background-color: var(--input-bg);
     color: var(--input-text);
     border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
 }
 
+/* 输入框焦点样式 */
 .stTextInput input:focus, .stTextArea textarea:focus {
     outline: none !important;
     border-color: var(--accent-color) !important;
     box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.3) !important;
 }
 
+/* 按钮样式 - 高对比度 */
 .stButton button {
     -webkit-appearance: none;
     touch-action: manipulation;
+    -webkit-border-radius: 10px;
     border-radius: 10px;
     background-color: var(--accent-color) !important;
     color: var(--button-text) !important;
@@ -183,6 +147,11 @@ st.markdown("""
     transform: translateY(-1px);
 }
 
+.stButton button:active {
+    transform: translateY(0);
+}
+
+/* 卡片/容器样式 */
 .stExpander {
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
@@ -191,6 +160,7 @@ st.markdown("""
     transition: all 0.3s ease;
 }
 
+/* 信息框样式 - 暗黑模式适配 */
 .stAlert {
     background-color: var(--bg-card) !important;
     border-color: var(--border-color) !important;
@@ -207,224 +177,78 @@ st.markdown("""
     border-left-color: #30d158 !important;
 }
 
+.stWarning {
+    background-color: rgba(255, 159, 10, 0.1) !important;
+    border-left-color: #ff9f0a !important;
+}
+
+.stError {
+    background-color: rgba(255, 69, 58, 0.1) !important;
+    border-left-color: #ff453a !important;
+}
+
+/* 文件上传区域 */
 .stFileUploader > div > div {
     background-color: var(--bg-secondary) !important;
     border-color: var(--border-color) !important;
     color: var(--text-primary) !important;
 }
 
-[data-testid="stSidebar"] {
+/* 分割线 */
+hr {
+    border-color: var(--border-color) !important;
+}
+
+/* 下载按钮 */
+.stDownloadButton button {
+    background-color: var(--bg-card) !important;
+    color: var(--accent-color) !important;
+    border: 2px solid var(--accent-color) !important;
+}
+
+.stDownloadButton button:hover {
+    background-color: var(--accent-color) !important;
+    color: var(--button-text) !important;
+}
+
+/* 侧边栏样式 */
+.css-1d391kg, .css-1lcbmhc, [data-testid="stSidebar"] {
     background-color: var(--bg-secondary) !important;
 }
 
-@media (max-width: 768px) {
-    .big-title { font-size: 26px !important; }
-    .subtitle { font-size: 14px !important; }
-    .main .block-container { padding: 1rem; }
-    .stApp { padding-bottom: env(safe-area-inset-bottom); }
-    .status-item .value { font-size: 16px; }
-    .status-item .label { font-size: 10px; }
+/* 选择框样式 */
+.stSelectbox > div > div {
+    background-color: var(--bg-card);
+    border-color: var(--border-color) !important;
+    color: var(--text-primary);
+    border-radius: 10px;
 }
 
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .big-title { 
+        font-size: 26px !important; 
+    }
+    .subtitle { 
+        font-size: 14px !important; 
+    }
+    .main .block-container { 
+        padding: 1rem; 
+    }
+    
+    /* iOS 安全区域适配 */
+    .stApp {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
+/* 平滑过渡动画 */
 * {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 </style>
 
-<!-- 实时录音状态栏 -->
-<div id="recording-status" class="recording-status-bar">
-    <div class="status-item">
-        <div class="label"><span class="pulse-dot"></span>录音状态</div>
-        <div class="value" style="font-size: 14px;">录制中</div>
-    </div>
-    <div class="status-item">
-        <div class="label">时长</div>
-        <div class="value"><span id="timer-val">00:00</span></div>
-    </div>
-    <div class="status-item">
-        <div class="label">估算大小</div>
-        <div class="value"><span id="bytes-val">0</span><span class="unit">KB</span></div>
-    </div>
-</div>
-
-<script>
-(function() {
-    'use strict';
-    
-    let timerInterval = null;
-    let startTime = null;
-    let isRecording = false;
-    
-    // 音频参数估算（16kHz, 16bit, 单声道 = 32KB/秒）
-    const BYTES_PER_SECOND = 32000;
-    
-    function formatTime(seconds) {
-        const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-        const s = (seconds % 60).toString().padStart(2, '0');
-        return m + ':' + s;
-    }
-    
-    function formatBytes(bytes) {
-        if (bytes < 1024) return bytes;
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1);
-        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-    }
-    
-    function updateDisplay() {
-        if (!startTime) return;
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        const bytes = elapsed * BYTES_PER_SECOND;
-        
-        const timerEl = document.getElementById('timer-val');
-        const bytesEl = document.getElementById('bytes-val');
-        
-        if (timerEl) timerEl.textContent = formatTime(elapsed);
-        if (bytesEl) {
-            if (bytes < 1024 * 1024) {
-                bytesEl.textContent = (bytes / 1024).toFixed(1);
-                bytesEl.nextElementSibling.textContent = 'KB';
-            } else {
-                bytesEl.textContent = (bytes / (1024 * 1024)).toFixed(2);
-                bytesEl.nextElementSibling.textContent = 'MB';
-            }
-        }
-    }
-    
-    function startRecording() {
-        if (isRecording) return;
-        isRecording = true;
-        startTime = Date.now();
-        
-        const statusBar = document.getElementById('recording-status');
-        if (statusBar) statusBar.classList.add('active');
-        
-        updateDisplay();
-        timerInterval = setInterval(updateDisplay, 1000);
-        
-        // 保存到 localStorage
-        localStorage.setItem('rec_start', startTime.toString());
-        localStorage.setItem('is_recording', 'true');
-        
-        console.log('[Record] Started');
-    }
-    
-    function stopRecording() {
-        if (!isRecording) return;
-        isRecording = false;
-        
-        clearInterval(timerInterval);
-        
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        const bytes = elapsed * BYTES_PER_SECOND;
-        
-        const statusBar = document.getElementById('recording-status');
-        if (statusBar) statusBar.classList.remove('active');
-        
-        // 保存结果
-        localStorage.setItem('rec_duration', elapsed.toString());
-        localStorage.setItem('rec_bytes', bytes.toString());
-        localStorage.setItem('is_recording', 'false');
-        localStorage.setItem('rec_finished', Date.now().toString());
-        
-        console.log('[Record] Stopped. Duration:', elapsed, 's, Bytes:', bytes);
-        
-        // 更新 URL 让 Python 获取
-        const url = new URL(window.location.href);
-        url.searchParams.set('dur', elapsed);
-        url.searchParams.set('bytes', bytes);
-        url.searchParams.set('t', Date.now());
-        window.history.replaceState({}, '', url);
-        
-        showCompletion(elapsed, bytes);
-    }
-    
-    function showCompletion(seconds, bytes) {
-        let sizeStr;
-        if (bytes < 1024 * 1024) {
-            sizeStr = (bytes / 1024).toFixed(1) + ' KB';
-        } else {
-            sizeStr = (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-        }
-        
-        const div = document.createElement('div');
-        div.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #34c759;
-            color: white;
-            padding: 25px 35px;
-            border-radius: 16px;
-            text-align: center;
-            z-index: 1000000;
-            font-family: -apple-system, sans-serif;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            min-width: 200px;
-        `;
-        div.innerHTML = `
-            <div style="font-size: 40px; margin-bottom: 8px;">✓</div>
-            <div style="font-size: 18px; font-weight: bold;">录音完成</div>
-            <div style="font-size: 14px; margin-top: 8px; opacity: 0.9;">
-                ${formatTime(seconds)} · ${sizeStr}
-            </div>
-        `;
-        document.body.appendChild(div);
-        
-        setTimeout(() => {
-            div.style.opacity = '0';
-            div.style.transition = 'opacity 0.5s';
-            setTimeout(() => div.remove(), 500);
-        }, 2500);
-    }
-    
-    // 恢复录音状态（页面刷新后）
-    function restoreState() {
-        const wasRecording = localStorage.getItem('is_recording');
-        const start = localStorage.getItem('rec_start');
-        
-        if (wasRecording === 'true' && start) {
-            const elapsed = Math.floor((Date.now() - parseInt(start)) / 1000);
-            if (elapsed < 300) { // 5分钟内
-                isRecording = true;
-                startTime = parseInt(start);
-                
-                const statusBar = document.getElementById('recording-status');
-                if (statusBar) statusBar.classList.add('active');
-                
-                updateDisplay();
-                timerInterval = setInterval(updateDisplay, 1000);
-            }
-        }
-    }
-    
-    // 监听所有按钮点击
-    document.addEventListener('click', function(e) {
-        const btn = e.target.closest('button');
-        if (!btn) return;
-        
-        const text = btn.textContent || '';
-        
-        // 开始录音
-        if (text.includes('🎙️') || text.includes('开始录音')) {
-            setTimeout(startRecording, 50);
-        }
-        
-        // 停止录音
-        if (text.includes('⏹️') || text.includes('停止')) {
-            setTimeout(stopRecording, 50);
-        }
-    }, true);
-    
-    // 初始化
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', restoreState);
-    } else {
-        restoreState();
-    }
-})();
-</script>
-
+<!-- iOS 状态栏颜色适配 -->
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
@@ -434,22 +258,7 @@ st.markdown("""
 st.markdown('<p class="big-title">🎙️ AI语音简报助手</p>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">语音直接转文字，自动生成简报</p>', unsafe_allow_html=True)
 
-# ========== 从 URL 读取录音数据 ==========
-query_params = st.query_params
-recording_info = {}
-if 'dur' in query_params and 'bytes' in query_params:
-    try:
-        recording_info = {
-            'duration': int(query_params['dur']),
-            'bytes': int(query_params['bytes'])
-        }
-        # 清理 URL
-        del st.query_params['dur']
-        del st.query_params['bytes']
-    except:
-        pass
-
-# ========== API 密钥管理 ==========
+# ========== API 密钥管理（主界面） ==========
 api_key = st.session_state.get("api_key", "")
 
 if not api_key:
@@ -482,6 +291,9 @@ if not api_key:
                     st.rerun()
                 else:
                     st.error("❌ 请输入正确的 API 密钥（以 sk- 开头）")
+        
+        with col2:
+            st.caption("💡 或设置环境变量 `SILICONFLOW_API_KEY`")
     
     st.stop()
 
@@ -495,25 +307,9 @@ with st.sidebar:
         st.rerun()
     
     st.divider()
-    st.caption("💡 AI简报_分享版 v2.6.0")
+    st.caption("💡 AI简报_分享版 v2.2.0")
 
-# ========== 工具函数 ==========
-def format_bytes(bytes_val):
-    """格式化字节数"""
-    if bytes_val < 1024:
-        return f"{bytes_val} B"
-    elif bytes_val < 1024 * 1024:
-        return f"{bytes_val / 1024:.1f} KB"
-    else:
-        return f"{bytes_val / (1024 * 1024):.2f} MB"
-
-def format_duration(seconds):
-    """格式化为 MM:SS"""
-    mins = int(seconds // 60)
-    secs = int(seconds % 60)
-    return f"{mins:02d}:{secs:02d}"
-
-# ========== 语音转文字函数 ==========
+# ========== 语音转文字函数（修复版） ==========
 def transcribe_audio(audio_bytes, api_key):
     tmp_path = None
     try:
@@ -548,10 +344,6 @@ col1, col2 = st.columns([1, 1])
 with col1:
     st.subheader("🎤 语音输入")
     
-    # 显示上次录音信息
-    if recording_info:
-        st.info(f"⏱️ 上次录音：**{format_duration(recording_info['duration'])}** · 📦 **{format_bytes(recording_info['bytes'])}**")
-    
     # 方式一：实时录音
     st.markdown("""
     <div style="padding: 15px; border-radius: 12px; margin-bottom: 10px; 
@@ -559,8 +351,8 @@ with col1:
                 border: 1px solid var(--border-color);">
         <h4 style="margin-top: 0; color: var(--text-primary);">方式一：实时录音</h4>
         <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">
-            📱 点击开始 → 底部显示<strong>实时时长和估算大小</strong> → 点击停止<br>
-            <span style="opacity: 0.7;">基于 16kHz/16bit 单声道音频估算</span>
+            📱 iPhone 提示：请使用 Safari 浏览器<br>
+            点击录音 → 说话 → 自动转写填入右侧
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -572,27 +364,16 @@ with col1:
             start_prompt="🎙️ 点击开始录音",
             stop_prompt="⏹️ 点击停止",
             just_once=True,
-            key="mic_recorder_bytes_v1"
+            key="mic_recorder_ios_v2"
         )
         
         if audio and audio.get("bytes"):
-            actual_bytes = len(audio["bytes"])
-            
             with st.spinner("🤖 AI正在转写..."):
                 result = transcribe_audio(audio["bytes"], api_key)
                 
                 if result["success"]:
                     st.session_state.transcribed_text = result["text"]
-                    word_count = len(result["text"])
-                    
-                    # 显示实际字节数对比
-                    info_cols = st.columns(2)
-                    with info_cols[0]:
-                        st.metric("实际大小", format_bytes(actual_bytes))
-                    with info_cols[1]:
-                        st.metric("转写字数", f"{word_count} 字")
-                    
-                    st.success(f"✅ 转写完成！")
+                    st.success(f"✅ 转写完成！共 {len(result['text'])} 字")
                     st.rerun()
                 else:
                     st.error(f"❌ 转写失败：{result['error']}")
@@ -605,7 +386,7 @@ with col1:
     
     st.divider()
     
-    # 方式二：上传录音
+    # 方式二：上传录音（iOS 推荐）
     st.subheader("📁 方式二：上传录音")
     
     st.info("""
@@ -622,8 +403,6 @@ with col1:
     )
     
     if audio_file:
-        file_size = len(audio_file.getvalue())
-        st.caption(f"📦 文件大小：**{format_bytes(file_size)}**")
         st.audio(audio_file, format=f'audio/{audio_file.type.split("/")[1]}')
         
         if st.button("🎯 开始转写", type="primary", key="transcribe_upload"):
@@ -632,8 +411,7 @@ with col1:
                 
                 if result["success"]:
                     st.session_state.transcribed_text = result["text"]
-                    word_count = len(result["text"])
-                    st.success(f"✅ 完成！共 {word_count} 字")
+                    st.success(f"✅ 完成！共 {len(result['text'])} 字")
                     st.rerun()
                 else:
                     st.error(f"❌ 失败：{result['error']}")
@@ -719,4 +497,4 @@ with col2:
         )
 
 st.divider()
-st.caption("Made with ❤️ | 语音版v2.6.0 - 实时字节估算")
+st.caption("Made with ❤️ | 语音版v2.2.0 - iOS 自动暗黑模式")
