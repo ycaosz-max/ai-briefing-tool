@@ -2,7 +2,6 @@ import streamlit as st
 from openai import OpenAI
 import os
 import tempfile
-import time
 
 # ========== 页面设置 ==========
 st.set_page_config(
@@ -11,277 +10,342 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# ========== 初始化 Session State ==========
-if 'recording' not in st.session_state:
-    st.session_state.recording = False
-if 'recording_start' not in st.session_state:
-    st.session_state.recording_start = 0
-if 'recording_duration' not in st.session_state:
-    st.session_state.recording_duration = 0
-if 'audio_processed' not in st.session_state:
-    st.session_state.audio_processed = False
-
-# ========== CSS + JavaScript 计时器（iOS 优化版） ==========
+# ========== iOS 暗黑/明亮模式 + 实时字节数显示 ==========
 st.markdown("""
 <style>
 :root {
     --bg-primary: #ffffff;
     --bg-secondary: #f0f2f6;
+    --bg-card: #ffffff;
     --text-primary: #1f1f1f;
+    --text-secondary: #666666;
+    --border-color: #e0e0e0;
     --accent-color: #ff4b4b;
+    --accent-hover: #ff3333;
+    --shadow: rgba(0, 0, 0, 0.1);
+    --input-bg: #ffffff;
+    --input-text: #1f1f1f;
+    --button-text: #ffffff;
     --timer-bg: #ff3b30;
-    --timer-text: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
         --bg-primary: #000000;
         --bg-secondary: #1c1c1e;
+        --bg-card: #2c2c2e;
         --text-primary: #ffffff;
+        --text-secondary: #8e8e93;
+        --border-color: #38383a;
         --accent-color: #0a84ff;
+        --accent-hover: #409cff;
+        --shadow: rgba(0, 0, 0, 0.5);
+        --input-bg: #1c1c1e;
+        --input-text: #ffffff;
+        --button-text: #ffffff;
         --timer-bg: #0a84ff;
     }
     .stApp { background-color: #000000 !important; }
+    .stTextInput input, .stTextArea textarea {
+        background-color: #1c1c1e !important;
+        color: #ffffff !important;
+        border-color: #38383a !important;
+    }
+    .stSelectbox > div > div {
+        background-color: #2c2c2e !important;
+        color: #ffffff !important;
+    }
+    [data-testid="stSidebar"] {
+        background-color: #1c1c1e !important;
+    }
 }
 
 * {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
 }
 
 .stApp {
     background-color: var(--bg-primary);
     color: var(--text-primary);
+    transition: all 0.3s ease;
 }
 
-/* ========== 录音计时器 - 固定底部（iOS 友好） ========== */
-.ios-timer-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: var(--timer-bg);
-    color: var(--timer-text);
-    padding: 20px;
-    text-align: center;
-    z-index: 999999;
-    transform: translateY(100%);
-    transition: transform 0.3s ease;
-    box-shadow: 0 -5px 20px rgba(0,0,0,0.3);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 15px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    padding-bottom: max(20px, env(safe-area-inset-bottom));
-}
-
-.ios-timer-bar.active {
-    transform: translateY(0);
-}
-
-.ios-timer-bar .pulse-dot {
-    width: 12px;
-    height: 12px;
-    background: white;
-    border-radius: 50%;
-    animation: pulse-animation 1s infinite;
-}
-
-.ios-timer-bar .timer-text {
-    font-size: 24px;
-    font-weight: bold;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 2px;
-}
-
-.ios-timer-bar .timer-label {
-    font-size: 14px;
-    opacity: 0.9;
-    text-transform: uppercase;
-}
-
-@keyframes pulse-animation {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.8); }
-}
-
-/* 中央大计时器（备用） */
-.center-timer {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0);
-    background: var(--timer-bg);
-    color: white;
-    padding: 40px;
-    border-radius: 20px;
-    text-align: center;
-    z-index: 1000000;
-    transition: transform 0.3s ease;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-}
-
-.center-timer.active {
-    transform: translate(-50%, -50%) scale(1);
-}
-
-.center-timer .big-time {
-    font-size: 56px;
-    font-weight: bold;
-    font-family: monospace;
-    margin: 10px 0;
-}
-
-/* 其他样式 */
 .big-title {
-    font-size: 28px;
+    font-size: 32px;
     font-weight: bold;
     color: var(--text-primary);
     margin-bottom: 8px;
 }
 
 .subtitle {
-    font-size: 15px;
+    font-size: 16px;
     color: var(--text-secondary);
-    margin-bottom: 20px;
+    margin-bottom: 24px;
+}
+
+/* ========== 实时录音状态栏（底部固定） ========== */
+.recording-status-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--timer-bg);
+    color: white;
+    padding: 15px 20px;
+    z-index: 999999;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    box-shadow: 0 -5px 20px rgba(0,0,0,0.3);
+    padding-bottom: max(15px, env(safe-area-inset-bottom));
+}
+
+.recording-status-bar.active {
+    transform: translateY(0);
+}
+
+.status-item {
+    text-align: center;
+    flex: 1;
+}
+
+.status-item .label {
+    font-size: 11px;
+    opacity: 0.8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+
+.status-item .value {
+    font-size: 20px;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+}
+
+.status-item .unit {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-left: 2px;
+}
+
+.pulse-dot {
+    width: 10px;
+    height: 10px;
+    background: white;
+    border-radius: 50%;
+    animation: blink 1s infinite;
+    display: inline-block;
+    margin-right: 5px;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* 其他样式 */
+.stTextInput input, .stTextArea textarea {
+    -webkit-appearance: none !important;
+    -webkit-user-select: text !important;
+    user-select: text !important;
+    font-size: 16px !important;
+    touch-action: manipulation;
+    border-radius: 10px;
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border: 1px solid var(--border-color);
+}
+
+.stTextInput input:focus, .stTextArea textarea:focus {
+    outline: none !important;
+    border-color: var(--accent-color) !important;
+    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.3) !important;
 }
 
 .stButton button {
     -webkit-appearance: none;
-    border-radius: 12px;
+    touch-action: manipulation;
+    border-radius: 10px;
     background-color: var(--accent-color) !important;
-    color: white !important;
+    color: var(--button-text) !important;
+    border: none !important;
     font-weight: 600;
-    font-size: 16px;
-    padding: 12px 24px;
-    width: 100%;
-    border: none;
-    margin: 5px 0;
+    transition: all 0.2s ease;
 }
 
-/* 录音中按钮样式 */
-.recording-active button {
-    background-color: #ff3b30 !important;
-    animation: button-pulse 2s infinite;
+.stButton button:hover {
+    background-color: var(--accent-hover) !important;
+    transform: translateY(-1px);
 }
 
-@keyframes button-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.8; }
-}
-
-/* 信息卡片 */
-.info-card {
-    background: var(--bg-secondary);
-    padding: 15px;
-    border-radius: 12px;
-    margin: 10px 0;
+.stExpander {
+    background-color: var(--bg-card);
     border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
 }
 
-/* 移动端优化 */
+.stAlert {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.stInfo {
+    background-color: rgba(10, 132, 255, 0.1) !important;
+    border-left-color: var(--accent-color) !important;
+}
+
+.stSuccess {
+    background-color: rgba(48, 209, 88, 0.1) !important;
+    border-left-color: #30d158 !important;
+}
+
+.stFileUploader > div > div {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-testid="stSidebar"] {
+    background-color: var(--bg-secondary) !important;
+}
+
 @media (max-width: 768px) {
-    .big-title { font-size: 24px; }
-    .center-timer .big-time { font-size: 40px; }
-    .ios-timer-bar .timer-text { font-size: 20px; }
+    .big-title { font-size: 26px !important; }
+    .subtitle { font-size: 14px !important; }
+    .main .block-container { padding: 1rem; }
+    .stApp { padding-bottom: env(safe-area-inset-bottom); }
+    .status-item .value { font-size: 16px; }
+    .status-item .label { font-size: 10px; }
+}
+
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 </style>
 
-<!-- iOS 计时器 HTML -->
-<div id="ios-timer-bar" class="ios-timer-bar">
-    <div class="pulse-dot"></div>
-    <div>
-        <div class="timer-text" id="timer-display">00:00</div>
-        <div class="timer-label">正在录音 · 点击停止按钮结束</div>
+<!-- 实时录音状态栏 -->
+<div id="recording-status" class="recording-status-bar">
+    <div class="status-item">
+        <div class="label"><span class="pulse-dot"></span>录音状态</div>
+        <div class="value" style="font-size: 14px;">录制中</div>
+    </div>
+    <div class="status-item">
+        <div class="label">时长</div>
+        <div class="value"><span id="timer-val">00:00</span></div>
+    </div>
+    <div class="status-item">
+        <div class="label">估算大小</div>
+        <div class="value"><span id="bytes-val">0</span><span class="unit">KB</span></div>
     </div>
 </div>
 
-<!-- 中央备用计时器 -->
-<div id="center-timer" class="center-timer">
-    <div style="font-size: 48px;">🔴</div>
-    <div class="big-time" id="center-time">00:00</div>
-    <div style="font-size: 14px; opacity: 0.8;">录音中...</div>
-</div>
-
 <script>
-// iOS 优化的计时器逻辑
 (function() {
     'use strict';
     
     let timerInterval = null;
     let startTime = null;
+    let isRecording = false;
     
-    function formatTime(sec) {
-        const m = Math.floor(sec / 60).toString().padStart(2, '0');
-        const s = (sec % 60).toString().padStart(2, '0');
+    // 音频参数估算（16kHz, 16bit, 单声道 = 32KB/秒）
+    const BYTES_PER_SECOND = 32000;
+    
+    function formatTime(seconds) {
+        const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const s = (seconds % 60).toString().padStart(2, '0');
         return m + ':' + s;
     }
     
-    function updateDisplay(seconds) {
-        const timeStr = formatTime(seconds);
-        const el1 = document.getElementById('timer-display');
-        const el2 = document.getElementById('center-time');
-        if (el1) el1.textContent = timeStr;
-        if (el2) el2.textContent = timeStr;
+    function formatBytes(bytes) {
+        if (bytes < 1024) return bytes;
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1);
+        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
     }
     
-    function startTimer() {
-        console.log('[Timer] Starting...');
+    function updateDisplay() {
+        if (!startTime) return;
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const bytes = elapsed * BYTES_PER_SECOND;
+        
+        const timerEl = document.getElementById('timer-val');
+        const bytesEl = document.getElementById('bytes-val');
+        
+        if (timerEl) timerEl.textContent = formatTime(elapsed);
+        if (bytesEl) {
+            if (bytes < 1024 * 1024) {
+                bytesEl.textContent = (bytes / 1024).toFixed(1);
+                bytesEl.nextElementSibling.textContent = 'KB';
+            } else {
+                bytesEl.textContent = (bytes / (1024 * 1024)).toFixed(2);
+                bytesEl.nextElementSibling.textContent = 'MB';
+            }
+        }
+    }
+    
+    function startRecording() {
+        if (isRecording) return;
+        isRecording = true;
         startTime = Date.now();
         
-        // 显示底部计时器
-        const bar = document.getElementById('ios-timer-bar');
-        if (bar) bar.classList.add('active');
+        const statusBar = document.getElementById('recording-status');
+        if (statusBar) statusBar.classList.add('active');
         
-        // 同时显示中央计时器（确保可见）
-        const center = document.getElementById('center-timer');
-        if (center) center.classList.add('active');
+        updateDisplay();
+        timerInterval = setInterval(updateDisplay, 1000);
         
-        // 每秒更新
-        updateDisplay(0);
-        timerInterval = setInterval(function() {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            updateDisplay(elapsed);
-        }, 1000);
-        
-        // 保存状态
+        // 保存到 localStorage
+        localStorage.setItem('rec_start', startTime.toString());
         localStorage.setItem('is_recording', 'true');
-        localStorage.setItem('recording_start', startTime.toString());
+        
+        console.log('[Record] Started');
     }
     
-    function stopTimer() {
-        console.log('[Timer] Stopping...');
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            timerInterval = null;
+    function stopRecording() {
+        if (!isRecording) return;
+        isRecording = false;
+        
+        clearInterval(timerInterval);
+        
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const bytes = elapsed * BYTES_PER_SECOND;
+        
+        const statusBar = document.getElementById('recording-status');
+        if (statusBar) statusBar.classList.remove('active');
+        
+        // 保存结果
+        localStorage.setItem('rec_duration', elapsed.toString());
+        localStorage.setItem('rec_bytes', bytes.toString());
+        localStorage.setItem('is_recording', 'false');
+        localStorage.setItem('rec_finished', Date.now().toString());
+        
+        console.log('[Record] Stopped. Duration:', elapsed, 's, Bytes:', bytes);
+        
+        // 更新 URL 让 Python 获取
+        const url = new URL(window.location.href);
+        url.searchParams.set('dur', elapsed);
+        url.searchParams.set('bytes', bytes);
+        url.searchParams.set('t', Date.now());
+        window.history.replaceState({}, '', url);
+        
+        showCompletion(elapsed, bytes);
+    }
+    
+    function showCompletion(seconds, bytes) {
+        let sizeStr;
+        if (bytes < 1024 * 1024) {
+            sizeStr = (bytes / 1024).toFixed(1) + ' KB';
+        } else {
+            sizeStr = (bytes / (1024 * 1024)).toFixed(2) + ' MB';
         }
         
-        const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-        
-        // 隐藏计时器
-        const bar = document.getElementById('ios-timer-bar');
-        if (bar) bar.classList.remove('active');
-        
-        const center = document.getElementById('center-timer');
-        if (center) center.classList.remove('active');
-        
-        // 保存时长
-        localStorage.setItem('recording_duration', duration.toString());
-        localStorage.setItem('is_recording', 'false');
-        localStorage.setItem('recording_finished', Date.now().toString());
-        
-        console.log('[Timer] Duration:', duration);
-        
-        // 显示完成提示
-        showDone(duration);
-        
-        return duration;
-    }
-    
-    function showDone(seconds) {
         const div = document.createElement('div');
         div.style.cssText = `
             position: fixed;
@@ -290,111 +354,98 @@ st.markdown("""
             transform: translate(-50%, -50%);
             background: #34c759;
             color: white;
-            padding: 30px 40px;
+            padding: 25px 35px;
             border-radius: 16px;
             text-align: center;
-            z-index: 1000001;
+            z-index: 1000000;
             font-family: -apple-system, sans-serif;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            min-width: 200px;
         `;
         div.innerHTML = `
-            <div style="font-size: 48px; margin-bottom: 10px;">✓</div>
-            <div style="font-size: 20px; font-weight: bold;">录音完成</div>
-            <div style="font-size: 32px; margin-top: 8px;">${formatTime(seconds)}</div>
+            <div style="font-size: 40px; margin-bottom: 8px;">✓</div>
+            <div style="font-size: 18px; font-weight: bold;">录音完成</div>
+            <div style="font-size: 14px; margin-top: 8px; opacity: 0.9;">
+                ${formatTime(seconds)} · ${sizeStr}
+            </div>
         `;
         document.body.appendChild(div);
         
-        setTimeout(function() {
+        setTimeout(() => {
             div.style.opacity = '0';
             div.style.transition = 'opacity 0.5s';
-            setTimeout(function() { div.remove(); }, 500);
-        }, 2000);
+            setTimeout(() => div.remove(), 500);
+        }, 2500);
     }
     
-    // 检查是否应该从 localStorage 恢复计时
-    function checkRecordingState() {
-        const isRecording = localStorage.getItem('is_recording');
-        const start = localStorage.getItem('recording_start');
+    // 恢复录音状态（页面刷新后）
+    function restoreState() {
+        const wasRecording = localStorage.getItem('is_recording');
+        const start = localStorage.getItem('rec_start');
         
-        if (isRecording === 'true' && start) {
+        if (wasRecording === 'true' && start) {
             const elapsed = Math.floor((Date.now() - parseInt(start)) / 1000);
             if (elapsed < 300) { // 5分钟内
-                console.log('[Timer] Restoring recording state, elapsed:', elapsed);
+                isRecording = true;
                 startTime = parseInt(start);
                 
-                const bar = document.getElementById('ios-timer-bar');
-                if (bar) bar.classList.add('active');
-                const center = document.getElementById('center-timer');
-                if (center) center.classList.add('active');
+                const statusBar = document.getElementById('recording-status');
+                if (statusBar) statusBar.classList.add('active');
                 
-                updateDisplay(elapsed);
-                timerInterval = setInterval(function() {
-                    const e = Math.floor((Date.now() - startTime) / 1000);
-                    updateDisplay(e);
-                }, 1000);
+                updateDisplay();
+                timerInterval = setInterval(updateDisplay, 1000);
             }
         }
     }
     
-    // 监听按钮点击（使用事件委托，更可靠）
+    // 监听所有按钮点击
     document.addEventListener('click', function(e) {
         const btn = e.target.closest('button');
         if (!btn) return;
         
         const text = btn.textContent || '';
         
-        // 点击开始录音
+        // 开始录音
         if (text.includes('🎙️') || text.includes('开始录音')) {
-            console.log('[Click] Start recording detected');
-            setTimeout(startTimer, 100);
+            setTimeout(startRecording, 50);
         }
         
-        // 点击停止录音
+        // 停止录音
         if (text.includes('⏹️') || text.includes('停止')) {
-            console.log('[Click] Stop recording detected');
-            setTimeout(stopTimer, 100);
+            setTimeout(stopRecording, 50);
         }
     }, true);
     
-    // 页面加载时检查状态
+    // 初始化
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', checkRecordingState);
+        document.addEventListener('DOMContentLoaded', restoreState);
     } else {
-        checkRecordingState();
+        restoreState();
     }
-    
-    // 每秒检查一次 localStorage 变化（备用方案）
-    setInterval(function() {
-        const finished = localStorage.getItem('recording_finished');
-        if (finished) {
-            const duration = localStorage.getItem('recording_duration');
-            if (duration) {
-                // 通知 Python（通过修改 URL）
-                const url = new URL(window.location.href);
-                url.searchParams.set('d', duration);
-                url.searchParams.set('t', Date.now());
-                window.history.replaceState({}, '', url);
-                
-                // 清理
-                localStorage.removeItem('recording_finished');
-            }
-        }
-    }, 500);
 })();
 </script>
+
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 """, unsafe_allow_html=True)
 
 # ========== 标题 ==========
 st.markdown('<p class="big-title">🎙️ AI语音简报助手</p>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">语音直接转文字，自动生成简报</p>', unsafe_allow_html=True)
 
-# ========== 从 URL 读取录音时长 ==========
+# ========== 从 URL 读取录音数据 ==========
 query_params = st.query_params
-if 'd' in query_params:
+recording_info = {}
+if 'dur' in query_params and 'bytes' in query_params:
     try:
-        duration = int(query_params['d'])
-        st.session_state.recording_duration = duration
-        del st.query_params['d']
+        recording_info = {
+            'duration': int(query_params['dur']),
+            'bytes': int(query_params['bytes'])
+        }
+        # 清理 URL
+        del st.query_params['dur']
+        del st.query_params['bytes']
     except:
         pass
 
@@ -444,10 +495,20 @@ with st.sidebar:
         st.rerun()
     
     st.divider()
-    st.caption("💡 AI简报_分享版 v2.5.0")
+    st.caption("💡 AI简报_分享版 v2.6.0")
 
 # ========== 工具函数 ==========
+def format_bytes(bytes_val):
+    """格式化字节数"""
+    if bytes_val < 1024:
+        return f"{bytes_val} B"
+    elif bytes_val < 1024 * 1024:
+        return f"{bytes_val / 1024:.1f} KB"
+    else:
+        return f"{bytes_val / (1024 * 1024):.2f} MB"
+
 def format_duration(seconds):
+    """格式化为 MM:SS"""
     mins = int(seconds // 60)
     secs = int(seconds % 60)
     return f"{mins:02d}:{secs:02d}"
@@ -487,22 +548,19 @@ col1, col2 = st.columns([1, 1])
 with col1:
     st.subheader("🎤 语音输入")
     
-    # 显示上次录音时长
-    if st.session_state.recording_duration > 0:
-        st.info(f"⏱️ 上次录音时长：**{format_duration(st.session_state.recording_duration)}**")
-        # 显示后重置，避免重复显示
-        duration_to_show = st.session_state.recording_duration
-        st.session_state.recording_duration = 0
-    else:
-        duration_to_show = 0
+    # 显示上次录音信息
+    if recording_info:
+        st.info(f"⏱️ 上次录音：**{format_duration(recording_info['duration'])}** · 📦 **{format_bytes(recording_info['bytes'])}**")
     
     # 方式一：实时录音
     st.markdown("""
-    <div class="info-card">
-        <h4 style="margin-top: 0;">方式一：实时录音 ⏱️</h4>
-        <p style="font-size: 14px; margin: 0; opacity: 0.8;">
-            点击开始 → 底部显示红色计时器 → 点击停止<br>
-            <strong>精确记录实际录音时间</strong>
+    <div style="padding: 15px; border-radius: 12px; margin-bottom: 10px; 
+                background-color: var(--bg-secondary); 
+                border: 1px solid var(--border-color);">
+        <h4 style="margin-top: 0; color: var(--text-primary);">方式一：实时录音</h4>
+        <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">
+            📱 点击开始 → 底部显示<strong>实时时长和估算大小</strong> → 点击停止<br>
+            <span style="opacity: 0.7;">基于 16kHz/16bit 单声道音频估算</span>
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -510,18 +568,15 @@ with col1:
     try:
         from streamlit_mic_recorder import mic_recorder
         
-        # 录音组件
         audio = mic_recorder(
             start_prompt="🎙️ 点击开始录音",
-            stop_prompt="⏹️ 点击停止（红色计时器会显示）",
+            stop_prompt="⏹️ 点击停止",
             just_once=True,
-            key="mic_recorder_ios_v5"
+            key="mic_recorder_bytes_v1"
         )
         
-        # 处理录音结果
-        if audio and audio.get("bytes") and not st.session_state.audio_processed:
-            # 标记已处理，避免重复
-            st.session_state.audio_processed = True
+        if audio and audio.get("bytes"):
+            actual_bytes = len(audio["bytes"])
             
             with st.spinner("🤖 AI正在转写..."):
                 result = transcribe_audio(audio["bytes"], api_key)
@@ -530,26 +585,23 @@ with col1:
                     st.session_state.transcribed_text = result["text"]
                     word_count = len(result["text"])
                     
-                    # 显示成功信息
-                    if duration_to_show > 0:
-                        st.success(f"✅ 转写完成！共 {word_count} 字 | 录音时长：**{format_duration(duration_to_show)}**")
-                    else:
-                        st.success(f"✅ 转写完成！共 {word_count} 字")
+                    # 显示实际字节数对比
+                    info_cols = st.columns(2)
+                    with info_cols[0]:
+                        st.metric("实际大小", format_bytes(actual_bytes))
+                    with info_cols[1]:
+                        st.metric("转写字数", f"{word_count} 字")
                     
-                    # 延迟重置，让用户看到结果
-                    time.sleep(0.5)
-                    st.session_state.audio_processed = False
+                    st.success(f"✅ 转写完成！")
                     st.rerun()
                 else:
                     st.error(f"❌ 转写失败：{result['error']}")
-                    st.session_state.audio_processed = False
                     
     except ImportError:
         st.error("⚠️ 录音组件加载失败，请使用方式二上传文件")
     except Exception as e:
         st.error(f"⚠️ 录音功能异常：{str(e)}")
-        st.info("请尝试使用方式二上传文件")
-        st.session_state.audio_processed = False
+        st.info("请尝试使用方式二上传录音文件")
     
     st.divider()
     
@@ -570,6 +622,8 @@ with col1:
     )
     
     if audio_file:
+        file_size = len(audio_file.getvalue())
+        st.caption(f"📦 文件大小：**{format_bytes(file_size)}**")
         st.audio(audio_file, format=f'audio/{audio_file.type.split("/")[1]}')
         
         if st.button("🎯 开始转写", type="primary", key="transcribe_upload"):
@@ -649,8 +703,6 @@ with col2:
     with col_clear:
         if st.button("🗑️ 清空", use_container_width=True):
             st.session_state.transcribed_text = ""
-            st.session_state.recording_duration = 0
-            st.session_state.audio_processed = False
             if "generated_result" in st.session_state:
                 del st.session_state.generated_result
             st.rerun()
@@ -667,4 +719,4 @@ with col2:
         )
 
 st.divider()
-st.caption("Made with ❤️ | 语音版v2.5.0 - iOS 录音计时器")
+st.caption("Made with ❤️ | 语音版v2.6.0 - 实时字节估算")
