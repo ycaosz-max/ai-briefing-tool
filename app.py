@@ -291,9 +291,6 @@ if not api_key:
                     st.rerun()
                 else:
                     st.error("❌ 请输入正确的 API 密钥（以 sk- 开头）")
-        
-        with col2:
-            st.caption("💡 或设置环境变量 `SILICONFLOW_API_KEY`")
     
     st.stop()
 
@@ -498,3 +495,4 @@ with col2:
 
 st.divider()
 st.caption("Made with ❤️ | 语音版v2.2.0 - iOS 自动暗黑模式")
+
