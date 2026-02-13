@@ -100,7 +100,7 @@ with st.sidebar:
         st.rerun()
     
     st.divider()
-    st.caption("💡 语音版v2.1.1 - iOS 优化版")
+    st.caption("💡 AI简报_分享版")
 
 # ========== 语音转文字函数 ==========
 def transcribe_audio(audio_bytes, api_key):
@@ -280,6 +280,7 @@ with col2:
 
 st.divider()
 st.caption("Made with ❤️ | 语音版v2.1.1 - iOS 优化版")
+
 
 
 
