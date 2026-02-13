@@ -268,8 +268,8 @@ if not api_key:
         st.markdown("""
         **获取步骤：**
         1. 访问 [硅基流动](https://cloud.siliconflow.cn/i/nZqCjymq)
-        2. 注册并完成实名认证
-        3. 创建您的 API 密钥
+        2. 注册完成实名认证
+        3. 创建您的API密钥
         4. 复制到下方输入框
         """)
         
@@ -495,4 +495,5 @@ with col2:
 
 st.divider()
 st.caption("Made with ❤️ | 语音版v2.2.0 - iOS 自动暗黑模式")
+
 
