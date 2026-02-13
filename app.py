@@ -349,7 +349,8 @@ with col1:
         <h4 style="margin-top: 0; color: var(--text-primary);">方式一：实时录音</h4>
         <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">
             📱 iPhone 提示：请使用 Safari 浏览器<br>
-            点击录音 → 说话 → 自动转写填入右侧
+            点击录音 → 开始说话 → 点击停止<br>
+            自动转写
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -358,7 +359,7 @@ with col1:
         from streamlit_mic_recorder import mic_recorder
         
         audio = mic_recorder(
-            start_prompt="🎙️ 点击开始录音",
+            start_prompt="🎙️ 点击录音",
             stop_prompt="⏹️ 点击停止",
             just_once=True,
             key="mic_recorder_ios_v2"
@@ -495,5 +496,6 @@ with col2:
 
 st.divider()
 st.caption("Made with ❤️ | 语音版v2.2.0 - iOS 自动暗黑模式")
+
 
 
