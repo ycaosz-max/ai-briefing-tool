@@ -12,21 +12,24 @@ st.set_page_config(
 )
 
 # ========== 初始化 Session State ==========
-if 'recording_start_time' not in st.session_state:
-    st.session_state.recording_start_time = None
+if 'recording' not in st.session_state:
+    st.session_state.recording = False
+if 'recording_start' not in st.session_state:
+    st.session_state.recording_start = 0
 if 'recording_duration' not in st.session_state:
     st.session_state.recording_duration = 0
+if 'audio_processed' not in st.session_state:
+    st.session_state.audio_processed = False
 
-# ========== CSS + JavaScript 实时计时器 ==========
+# ========== CSS + JavaScript 计时器（iOS 优化版） ==========
 st.markdown("""
 <style>
 :root {
     --bg-primary: #ffffff;
     --bg-secondary: #f0f2f6;
     --text-primary: #1f1f1f;
-    --text-secondary: #666666;
     --accent-color: #ff4b4b;
-    --timer-bg: rgba(255, 75, 75, 0.95);
+    --timer-bg: #ff3b30;
     --timer-text: #ffffff;
 }
 
@@ -35,9 +38,8 @@ st.markdown("""
         --bg-primary: #000000;
         --bg-secondary: #1c1c1e;
         --text-primary: #ffffff;
-        --text-secondary: #8e8e93;
         --accent-color: #0a84ff;
-        --timer-bg: rgba(10, 132, 255, 0.95);
+        --timer-bg: #0a84ff;
     }
     .stApp { background-color: #000000 !important; }
 }
@@ -45,6 +47,8 @@ st.markdown("""
 * {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .stApp {
@@ -52,282 +56,330 @@ st.markdown("""
     color: var(--text-primary);
 }
 
-/* 录音计时器 - 屏幕中央浮动 */
-.recording-overlay {
+/* ========== 录音计时器 - 固定底部（iOS 友好） ========== */
+.ios-timer-bar {
     position: fixed;
-    top: 0;
+    bottom: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    z-index: 999998;
-    display: none;
-    justify-content: center;
-    align-items: center;
-    backdrop-filter: blur(5px);
-}
-
-.recording-overlay.active {
-    display: flex;
-}
-
-.recording-timer-box {
+    right: 0;
     background: var(--timer-bg);
     color: var(--timer-text);
-    padding: 40px 60px;
-    border-radius: 24px;
+    padding: 20px;
     text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-    animation: pulse 2s infinite;
-    min-width: 200px;
+    z-index: 999999;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    box-shadow: 0 -5px 20px rgba(0,0,0,0.3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
 }
 
-.recording-timer-box .timer-icon {
-    font-size: 48px;
-    margin-bottom: 10px;
+.ios-timer-bar.active {
+    transform: translateY(0);
 }
 
-.recording-timer-box .timer-display {
-    font-size: 64px;
+.ios-timer-bar .pulse-dot {
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-radius: 50%;
+    animation: pulse-animation 1s infinite;
+}
+
+.ios-timer-bar .timer-text {
+    font-size: 24px;
     font-weight: bold;
-    font-family: -apple-system-monospace, monospace;
     font-variant-numeric: tabular-nums;
-    letter-spacing: 4px;
-    line-height: 1;
+    letter-spacing: 2px;
 }
 
-.recording-timer-box .timer-label {
-    font-size: 16px;
-    margin-top: 15px;
+.ios-timer-bar .timer-label {
+    font-size: 14px;
     opacity: 0.9;
     text-transform: uppercase;
-    letter-spacing: 3px;
 }
 
-.recording-timer-box .timer-sub {
-    font-size: 13px;
-    margin-top: 8px;
-    opacity: 0.7;
+@keyframes pulse-animation {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
 }
 
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.02); }
-}
-
-/* 停止按钮提示 */
-.stop-hint {
+/* 中央大计时器（备用） */
+.center-timer {
     position: fixed;
-    bottom: 100px;
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
-    background: rgba(255, 255, 255, 0.2);
+    transform: translate(-50%, -50%) scale(0);
+    background: var(--timer-bg);
     color: white;
-    padding: 12px 24px;
+    padding: 40px;
     border-radius: 20px;
-    font-size: 14px;
-    z-index: 999999;
-    display: none;
+    text-align: center;
+    z-index: 1000000;
+    transition: transform 0.3s ease;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
 }
 
-.recording-overlay.active + .stop-hint,
-.stop-hint.active {
-    display: block;
+.center-timer.active {
+    transform: translate(-50%, -50%) scale(1);
 }
 
-/* 响应式 */
-@media (max-width: 768px) {
-    .recording-timer-box {
-        padding: 30px 40px;
-        margin: 20px;
-    }
-    .recording-timer-box .timer-display {
-        font-size: 48px;
-    }
-    .recording-timer-box .timer-icon {
-        font-size: 36px;
-    }
+.center-timer .big-time {
+    font-size: 56px;
+    font-weight: bold;
+    font-family: monospace;
+    margin: 10px 0;
 }
 
 /* 其他样式 */
-.stButton button {
-    -webkit-appearance: none;
-    border-radius: 10px;
-    background-color: var(--accent-color) !important;
-    color: white !important;
-    font-weight: 600;
-}
-
 .big-title {
-    font-size: 32px;
+    font-size: 28px;
     font-weight: bold;
     color: var(--text-primary);
+    margin-bottom: 8px;
 }
 
 .subtitle {
-    font-size: 16px;
+    font-size: 15px;
     color: var(--text-secondary);
+    margin-bottom: 20px;
+}
+
+.stButton button {
+    -webkit-appearance: none;
+    border-radius: 12px;
+    background-color: var(--accent-color) !important;
+    color: white !important;
+    font-weight: 600;
+    font-size: 16px;
+    padding: 12px 24px;
+    width: 100%;
+    border: none;
+    margin: 5px 0;
+}
+
+/* 录音中按钮样式 */
+.recording-active button {
+    background-color: #ff3b30 !important;
+    animation: button-pulse 2s infinite;
+}
+
+@keyframes button-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+/* 信息卡片 */
+.info-card {
+    background: var(--bg-secondary);
+    padding: 15px;
+    border-radius: 12px;
+    margin: 10px 0;
+    border: 1px solid var(--border-color);
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+    .big-title { font-size: 24px; }
+    .center-timer .big-time { font-size: 40px; }
+    .ios-timer-bar .timer-text { font-size: 20px; }
 }
 </style>
 
-<!-- 录音计时器 UI -->
-<div id="recording-overlay" class="recording-overlay">
-    <div class="recording-timer-box">
-        <div class="timer-icon">🔴</div>
-        <div class="timer-display" id="timer-display">00:00</div>
-        <div class="timer-label">正在录音</div>
-        <div class="timer-sub">点击停止按钮结束</div>
+<!-- iOS 计时器 HTML -->
+<div id="ios-timer-bar" class="ios-timer-bar">
+    <div class="pulse-dot"></div>
+    <div>
+        <div class="timer-text" id="timer-display">00:00</div>
+        <div class="timer-label">正在录音 · 点击停止按钮结束</div>
     </div>
 </div>
 
-<div id="stop-hint" class="stop-hint">👇 点击下方停止按钮结束录音</div>
+<!-- 中央备用计时器 -->
+<div id="center-timer" class="center-timer">
+    <div style="font-size: 48px;">🔴</div>
+    <div class="big-time" id="center-time">00:00</div>
+    <div style="font-size: 14px; opacity: 0.8;">录音中...</div>
+</div>
 
 <script>
+// iOS 优化的计时器逻辑
 (function() {
+    'use strict';
+    
     let timerInterval = null;
     let startTime = null;
-    let isRecording = false;
     
-    function formatTime(seconds) {
-        const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
-        const secs = (seconds % 60).toString().padStart(2, '0');
-        return mins + ':' + secs;
+    function formatTime(sec) {
+        const m = Math.floor(sec / 60).toString().padStart(2, '0');
+        const s = (sec % 60).toString().padStart(2, '0');
+        return m + ':' + s;
+    }
+    
+    function updateDisplay(seconds) {
+        const timeStr = formatTime(seconds);
+        const el1 = document.getElementById('timer-display');
+        const el2 = document.getElementById('center-time');
+        if (el1) el1.textContent = timeStr;
+        if (el2) el2.textContent = timeStr;
     }
     
     function startTimer() {
-        if (isRecording) return;
-        isRecording = true;
+        console.log('[Timer] Starting...');
         startTime = Date.now();
         
-        document.getElementById('recording-overlay').classList.add('active');
-        document.getElementById('stop-hint').classList.add('active');
+        // 显示底部计时器
+        const bar = document.getElementById('ios-timer-bar');
+        if (bar) bar.classList.add('active');
         
-        const display = document.getElementById('timer-display');
-        display.textContent = '00:00';
+        // 同时显示中央计时器（确保可见）
+        const center = document.getElementById('center-timer');
+        if (center) center.classList.add('active');
         
-        // 立即更新一次，然后每秒更新
+        // 每秒更新
+        updateDisplay(0);
         timerInterval = setInterval(function() {
             const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            display.textContent = formatTime(elapsed);
-        }, 100);
+            updateDisplay(elapsed);
+        }, 1000);
         
-        console.log('🎙️ 录音开始，时间戳:', startTime);
+        // 保存状态
+        localStorage.setItem('is_recording', 'true');
+        localStorage.setItem('recording_start', startTime.toString());
     }
     
     function stopTimer() {
-        if (!isRecording) return;
-        isRecording = false;
+        console.log('[Timer] Stopping...');
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
         
-        clearInterval(timerInterval);
-        
-        const duration = Math.floor((Date.now() - startTime) / 1000);
-        const durationMs = Date.now() - startTime; // 精确到毫秒
-        
-        // 保存到 localStorage，页面刷新后也能获取
-        localStorage.setItem('recording_duration', duration);
-        localStorage.setItem('recording_duration_ms', durationMs);
-        localStorage.setItem('recording_stop_time', Date.now());
+        const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
         
         // 隐藏计时器
-        document.getElementById('recording-overlay').classList.remove('active');
-        document.getElementById('stop-hint').classList.remove('active');
+        const bar = document.getElementById('ios-timer-bar');
+        if (bar) bar.classList.remove('active');
         
-        console.log('⏹️ 录音停止，时长:', duration, '秒');
+        const center = document.getElementById('center-timer');
+        if (center) center.classList.remove('active');
+        
+        // 保存时长
+        localStorage.setItem('recording_duration', duration.toString());
+        localStorage.setItem('is_recording', 'false');
+        localStorage.setItem('recording_finished', Date.now().toString());
+        
+        console.log('[Timer] Duration:', duration);
         
         // 显示完成提示
-        showCompletion(duration);
+        showDone(duration);
         
         return duration;
     }
     
-    function showCompletion(seconds) {
+    function showDone(seconds) {
         const div = document.createElement('div');
         div.style.cssText = `
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: #30d158;
+            background: #34c759;
             color: white;
-            padding: 30px 50px;
-            border-radius: 20px;
-            font-size: 24px;
-            font-weight: bold;
-            z-index: 1000000;
+            padding: 30px 40px;
+            border-radius: 16px;
             text-align: center;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            animation: popIn 0.3s ease;
+            z-index: 1000001;
+            font-family: -apple-system, sans-serif;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         `;
         div.innerHTML = `
-            <div style="font-size: 48px; margin-bottom: 10px;">✅</div>
-            <div>录音完成</div>
-            <div style="font-size: 32px; margin-top: 10px;">${formatTime(seconds)}</div>
+            <div style="font-size: 48px; margin-bottom: 10px;">✓</div>
+            <div style="font-size: 20px; font-weight: bold;">录音完成</div>
+            <div style="font-size: 32px; margin-top: 8px;">${formatTime(seconds)}</div>
         `;
         document.body.appendChild(div);
         
-        setTimeout(() => {
+        setTimeout(function() {
             div.style.opacity = '0';
             div.style.transition = 'opacity 0.5s';
-            setTimeout(() => div.remove(), 500);
+            setTimeout(function() { div.remove(); }, 500);
         }, 2000);
     }
     
-    // 监听按钮变化
-    function watchButtons() {
-        const checkInterval = setInterval(function() {
-            const buttons = document.querySelectorAll('button');
-            
-            buttons.forEach(function(btn) {
-                const text = btn.textContent || '';
+    // 检查是否应该从 localStorage 恢复计时
+    function checkRecordingState() {
+        const isRecording = localStorage.getItem('is_recording');
+        const start = localStorage.getItem('recording_start');
+        
+        if (isRecording === 'true' && start) {
+            const elapsed = Math.floor((Date.now() - parseInt(start)) / 1000);
+            if (elapsed < 300) { // 5分钟内
+                console.log('[Timer] Restoring recording state, elapsed:', elapsed);
+                startTime = parseInt(start);
                 
-                // 检测开始按钮变成停止按钮（表示录音中）
-                if ((text.includes('⏹️') || text.includes('停止')) && !btn._recordingWatched) {
-                    btn._recordingWatched = true;
-                    
-                    // 开始计时
-                    if (!isRecording) {
-                        startTimer();
-                    }
-                    
-                    // 绑定点击事件
-                    btn.addEventListener('click', function() {
-                        setTimeout(function() {
-                            if (isRecording) {
-                                const duration = stopTimer();
-                                // 设置 URL 参数，让 Python 能读取
-                                const url = new URL(window.location);
-                                url.searchParams.set('recording_duration', duration);
-                                url.searchParams.set('t', Date.now());
-                                window.history.replaceState({}, '', url);
-                            }
-                        }, 100);
-                    });
-                }
+                const bar = document.getElementById('ios-timer-bar');
+                if (bar) bar.classList.add('active');
+                const center = document.getElementById('center-timer');
+                if (center) center.classList.add('active');
                 
-                // 如果按钮变回开始状态，重置标记
-                if (text.includes('🎙️') && btn._recordingWatched && !isRecording) {
-                    btn._recordingWatched = false;
-                }
-            });
-        }, 200);
-    }
-    
-    // 添加动画
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes popIn {
-            from { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
-            to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+                updateDisplay(elapsed);
+                timerInterval = setInterval(function() {
+                    const e = Math.floor((Date.now() - startTime) / 1000);
+                    updateDisplay(e);
+                }, 1000);
+            }
         }
-    `;
-    document.head.appendChild(style);
-    
-    // 启动监听
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', watchButtons);
-    } else {
-        watchButtons();
     }
+    
+    // 监听按钮点击（使用事件委托，更可靠）
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        
+        const text = btn.textContent || '';
+        
+        // 点击开始录音
+        if (text.includes('🎙️') || text.includes('开始录音')) {
+            console.log('[Click] Start recording detected');
+            setTimeout(startTimer, 100);
+        }
+        
+        // 点击停止录音
+        if (text.includes('⏹️') || text.includes('停止')) {
+            console.log('[Click] Stop recording detected');
+            setTimeout(stopTimer, 100);
+        }
+    }, true);
+    
+    // 页面加载时检查状态
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', checkRecordingState);
+    } else {
+        checkRecordingState();
+    }
+    
+    // 每秒检查一次 localStorage 变化（备用方案）
+    setInterval(function() {
+        const finished = localStorage.getItem('recording_finished');
+        if (finished) {
+            const duration = localStorage.getItem('recording_duration');
+            if (duration) {
+                // 通知 Python（通过修改 URL）
+                const url = new URL(window.location.href);
+                url.searchParams.set('d', duration);
+                url.searchParams.set('t', Date.now());
+                window.history.replaceState({}, '', url);
+                
+                // 清理
+                localStorage.removeItem('recording_finished');
+            }
+        }
+    }, 500);
 })();
 </script>
 """, unsafe_allow_html=True)
@@ -336,13 +388,13 @@ st.markdown("""
 st.markdown('<p class="big-title">🎙️ AI语音简报助手</p>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">语音直接转文字，自动生成简报</p>', unsafe_allow_html=True)
 
-# ========== 从 URL 参数读取录音时长 ==========
+# ========== 从 URL 读取录音时长 ==========
 query_params = st.query_params
-if 'recording_duration' in query_params:
+if 'd' in query_params:
     try:
-        st.session_state.recording_duration = int(query_params['recording_duration'])
-        # 清除参数，避免重复读取
-        del st.query_params['recording_duration']
+        duration = int(query_params['d'])
+        st.session_state.recording_duration = duration
+        del st.query_params['d']
     except:
         pass
 
@@ -392,11 +444,10 @@ with st.sidebar:
         st.rerun()
     
     st.divider()
-    st.caption("💡 AI简报_分享版 v2.4.0")
+    st.caption("💡 AI简报_分享版 v2.5.0")
 
 # ========== 工具函数 ==========
 def format_duration(seconds):
-    """格式化为 MM:SS"""
     mins = int(seconds // 60)
     secs = int(seconds % 60)
     return f"{mins:02d}:{secs:02d}"
@@ -439,15 +490,18 @@ with col1:
     # 显示上次录音时长
     if st.session_state.recording_duration > 0:
         st.info(f"⏱️ 上次录音时长：**{format_duration(st.session_state.recording_duration)}**")
+        # 显示后重置，避免重复显示
+        duration_to_show = st.session_state.recording_duration
+        st.session_state.recording_duration = 0
+    else:
+        duration_to_show = 0
     
     # 方式一：实时录音
     st.markdown("""
-    <div style="padding: 15px; border-radius: 12px; margin: 10px 0; 
-                background-color: var(--bg-secondary); 
-                border: 1px solid var(--border-color);">
-        <h4 style="margin-top: 0; color: var(--text-primary);">方式一：实时录音 ⏱️</h4>
-        <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">
-            点击开始 → 屏幕显示计时器 → 点击停止自动转写<br>
+    <div class="info-card">
+        <h4 style="margin-top: 0;">方式一：实时录音 ⏱️</h4>
+        <p style="font-size: 14px; margin: 0; opacity: 0.8;">
+            点击开始 → 底部显示红色计时器 → 点击停止<br>
             <strong>精确记录实际录音时间</strong>
         </p>
     </div>
@@ -456,45 +510,46 @@ with col1:
     try:
         from streamlit_mic_recorder import mic_recorder
         
+        # 录音组件
         audio = mic_recorder(
             start_prompt="🎙️ 点击开始录音",
-            stop_prompt="⏹️ 点击停止",
+            stop_prompt="⏹️ 点击停止（红色计时器会显示）",
             just_once=True,
-            key="mic_recorder_timer_v1"
+            key="mic_recorder_ios_v5"
         )
         
-        # 检查是否有新的录音时长数据（从 JavaScript 通过 URL 传递）
-        current_duration = st.session_state.get('recording_duration', 0)
-        
-        if audio and audio.get("bytes"):
-            # 使用 JavaScript 记录的时长，如果没有则使用 session state 中的
-            duration = current_duration
+        # 处理录音结果
+        if audio and audio.get("bytes") and not st.session_state.audio_processed:
+            # 标记已处理，避免重复
+            st.session_state.audio_processed = True
             
-            with st.spinner(f"🤖 AI正在转写..."):
+            with st.spinner("🤖 AI正在转写..."):
                 result = transcribe_audio(audio["bytes"], api_key)
                 
                 if result["success"]:
                     st.session_state.transcribed_text = result["text"]
                     word_count = len(result["text"])
                     
-                    # 显示成功信息（包含字数和精确时长）
-                    success_msg = f"✅ 转写完成！共 {word_count} 字"
-                    if duration > 0:
-                        success_msg += f" | 录音时长：**{format_duration(duration)}**"
+                    # 显示成功信息
+                    if duration_to_show > 0:
+                        st.success(f"✅ 转写完成！共 {word_count} 字 | 录音时长：**{format_duration(duration_to_show)}**")
+                    else:
+                        st.success(f"✅ 转写完成！共 {word_count} 字")
                     
-                    st.success(success_msg)
-                    
-                    # 重置时长记录
-                    st.session_state.recording_duration = 0
+                    # 延迟重置，让用户看到结果
+                    time.sleep(0.5)
+                    st.session_state.audio_processed = False
                     st.rerun()
                 else:
                     st.error(f"❌ 转写失败：{result['error']}")
+                    st.session_state.audio_processed = False
                     
     except ImportError:
         st.error("⚠️ 录音组件加载失败，请使用方式二上传文件")
     except Exception as e:
         st.error(f"⚠️ 录音功能异常：{str(e)}")
-        st.info("请尝试使用方式二上传录音文件")
+        st.info("请尝试使用方式二上传文件")
+        st.session_state.audio_processed = False
     
     st.divider()
     
@@ -595,6 +650,7 @@ with col2:
         if st.button("🗑️ 清空", use_container_width=True):
             st.session_state.transcribed_text = ""
             st.session_state.recording_duration = 0
+            st.session_state.audio_processed = False
             if "generated_result" in st.session_state:
                 del st.session_state.generated_result
             st.rerun()
@@ -611,4 +667,4 @@ with col2:
         )
 
 st.divider()
-st.caption("Made with ❤️ | 语音版v2.4.0 - 精确录音计时")
+st.caption("Made with ❤️ | 语音版v2.5.0 - iOS 录音计时器")
