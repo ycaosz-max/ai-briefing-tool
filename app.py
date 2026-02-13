@@ -1,6 +1,5 @@
-# AI简报小助手 - iOS 原生风格版 v3.0
-# 设计规范：iOS Human Interface Guidelines
-# 特点：圆角、毛玻璃、统一配色、SF字体风格
+# AI简报小助手 - 语音版v2.1.2 (风格优化版)
+# 优化：统一字体、圆角、配色，借鉴苹果设计精髓
 
 import streamlit as st
 from openai import OpenAI
@@ -9,376 +8,249 @@ import tempfile
 
 # ========== 页面设置 ==========
 st.set_page_config(
-    page_title="AI语音简报",
+    page_title="AI语音简报助手", 
     page_icon="🎙️",
-    initial_sidebar_state="collapsed",  # iOS风格：简洁，默认收起
-    layout="centered"  # iOS风格：居中窄布局，更适合手机
+    initial_sidebar_state="auto"
 )
 
-# ========== iOS 原生风格 CSS ==========
+# ========== 统一风格 CSS ==========
 st.markdown("""
 <style>
-/* iOS 基础变量 */
-:root {
-    --ios-bg: #F2F2F7;           /* iOS系统灰 */
-    --ios-card: #FFFFFF;          /* 卡片白 */
-    --ios-blue: #007AFF;          /* iOS蓝 */
-    --ios-green: #34C759;         /* iOS绿 */
-    --ios-red: #FF3B30;           /* iOS红 */
-    --ios-orange: #FF9500;        /* iOS橙 */
-    --ios-gray: #8E8E93;          /* iOS灰 */
-    --ios-light-gray: #E5E5EA;    /* iOS浅灰 */
-    --ios-text: #000000;          /* 主文字 */
-    --ios-text-secondary: #3C3C43; /* 次要文字 60%透明度 */
-    --ios-radius: 10px;           /* iOS标准圆角 */
-    --ios-radius-lg: 16px;        /* iOS大圆角 */
-    --ios-shadow: 0 2px 8px rgba(0,0,0,0.08); /* iOS阴影 */
-}
-
-/* 全局 iOS 风格 */
+/* 统一字体系统 - 借鉴苹果系统字体栈 */
 * {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
 }
 
+/* 统一设计变量 */
+:root {
+    --primary: #007AFF;
+    --success: #34C759;
+    --warning: #FF9500;
+    --danger: #FF3B30;
+    --gray: #8E8E93;
+    --light-gray: #F2F2F7;
+    --border: #E5E5EA;
+    --radius: 10px;
+    --radius-sm: 8px;
+}
+
+/* 页面背景 */
 .stApp {
-    background-color: var(--ios-bg) !important;
+    background-color: #FAFAFA !important;
 }
 
-/* iOS 导航栏风格标题 */
-.ios-nav {
-    background: rgba(255,255,255,0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 0.5px solid var(--ios-light-gray);
-    padding: 12px 16px;
-    margin: -1rem -1rem 1rem -1rem;
-    text-align: center;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+/* 标题样式 */
+.big-title {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    color: #1C1C1E !important;
+    text-align: center !important;
+    margin-bottom: 4px !important;
+    letter-spacing: -0.3px !important;
 }
 
-.ios-nav-title {
-    font-size: 17px;
-    font-weight: 600;
-    color: var(--ios-text);
-    letter-spacing: -0.01em;
+.subtitle {
+    font-size: 15px !important;
+    font-weight: 400 !important;
+    color: var(--gray) !important;
+    text-align: center !important;
+    margin-bottom: 20px !important;
 }
 
-/* iOS 卡片 */
-.ios-card {
-    background: var(--ios-card);
-    border-radius: var(--ios-radius-lg);
-    padding: 16px;
-    margin-bottom: 12px;
-    box-shadow: var(--ios-shadow);
-    border: none;
-}
-
-.ios-card h3 {
-    font-size: 20px;
-    font-weight: 600;
-    margin: 0 0 12px 0;
-    color: var(--ios-text);
-}
-
-/* iOS 分组标题 */
-.ios-section-title {
-    font-size: 13px;
-    font-weight: 400;
-    color: var(--ios-gray);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin: 20px 16px 8px 16px;
-}
-
-/* iOS 按钮 - 主要 */
-.ios-button-primary {
-    background: var(--ios-blue) !important;
-    color: white !important;
-    border-radius: var(--ios-radius) !important;
-    padding: 12px 24px !important;
-    font-size: 17px !important;
-    font-weight: 500 !important;
+/* 统一卡片/提示框 - 圆角阴影 */
+.stAlert {
+    border-radius: var(--radius) !important;
     border: none !important;
-    width: 100% !important;
-    height: 50px !important;
-    transition: all 0.2s ease;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
+    padding: 16px !important;
 }
 
-.ios-button-primary:active {
-    opacity: 0.8;
-    transform: scale(0.98);
+/* 警告框 */
+div[data-testid="stAlertContainer"][data-kind="warning"] {
+    background-color: #FFF8E6 !important;
+    border-left: 3px solid var(--warning) !important;
 }
 
-/* iOS 按钮 - 次要 */
-.ios-button-secondary {
-    background: var(--ios-light-gray) !important;
-    color: var(--ios-blue) !important;
-    border-radius: var(--ios-radius) !important;
-    padding: 12px 24px !important;
-    font-size: 17px !important;
-    font-weight: 500 !important;
-    border: none !important;
-    width: 100% !important;
-    height: 50px !important;
+/* 成功框 */
+.stSuccess {
+    background-color: #E8F8F0 !important;
+    border-left: 3px solid var(--success) !important;
+    color: #1C1C1E !important;
 }
 
-/* iOS 输入框 */
+/* 错误框 */
+.stError {
+    background-color: #FFEBEA !important;
+    border-left: 3px solid var(--danger) !important;
+    color: #1C1C1E !important;
+}
+
+/* 信息框 */
+.stInfo {
+    background-color: #E8F4FD !important;
+    border-left: 3px solid var(--primary) !important;
+    color: #1C1C1E !important;
+}
+
+/* 统一输入框 */
 .stTextInput input, .stTextArea textarea {
-    background: var(--ios-card) !important;
-    border: none !important;
-    border-radius: var(--ios-radius) !important;
-    padding: 12px 16px !important;
-    font-size: 17px !important;
-    color: var(--ios-text) !important;
-    box-shadow: inset 0 0 0 0.5px var(--ios-light-gray) !important;
     -webkit-appearance: none !important;
-    min-height: 50px !important;
+    font-size: 16px !important;
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid var(--border) !important;
+    background-color: white !important;
+    padding: 10px 14px !important;
+    color: #1C1C1E !important;
 }
 
 .stTextInput input:focus, .stTextArea textarea:focus {
-    box-shadow: inset 0 0 0 2px var(--ios-blue) !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(0,122,255,0.08) !important;
 }
 
-/* iOS 选择器 */
+/* 统一按钮 */
+.stButton > button {
+    border-radius: var(--radius-sm) !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    padding: 8px 20px !important;
+    transition: all 0.2s !important;
+}
+
+.stButton > button[kind="primary"] {
+    background-color: var(--primary) !important;
+    color: white !important;
+    border: none !important;
+}
+
+.stButton > button[kind="primary"]:hover {
+    background-color: #0063CC !important;
+}
+
+.stButton > button[kind="secondary"] {
+    background-color: var(--light-gray) !important;
+    color: var(--primary) !important;
+    border: none !important;
+}
+
+/* 统一选择框 */
 .stSelectbox > div > div {
-    background: var(--ios-card) !important;
-    border-radius: var(--ios-radius) !important;
-    border: none !important;
-    padding: 4px !important;
-    font-size: 17px !important;
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid var(--border) !important;
+    background-color: white !important;
 }
 
-/* iOS 文件上传 */
+/* 统一文件上传 */
 .stFileUploader > div > div {
-    background: var(--ios-card) !important;
-    border: 2px dashed var(--ios-light-gray) !important;
-    border-radius: var(--ios-radius-lg) !important;
-    padding: 30px !important;
+    border-radius: var(--radius) !important;
+    border: 1.5px dashed #D1D1D6 !important;
+    background-color: white !important;
 }
 
-/* iOS 标签页 */
-.ios-segment {
-    display: flex;
-    background: var(--ios-light-gray);
-    border-radius: var(--ios-radius);
-    padding: 2px;
-    margin-bottom: 16px;
+.stFileUploader > div > div:hover {
+    border-color: var(--primary) !important;
+    background-color: #F5F9FF !important;
 }
 
-.ios-segment-item {
-    flex: 1;
-    text-align: center;
-    padding: 8px;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--ios-text);
-}
-
-.ios-segment-item.active {
-    background: var(--ios-card);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-/* iOS 列表项 */
-.ios-list-item {
-    background: var(--ios-card);
-    padding: 12px 16px;
-    border-bottom: 0.5px solid var(--ios-light-gray);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.ios-list-item:first-child {
-    border-radius: var(--ios-radius-lg) var(--ios-radius-lg) 0 0;
-}
-
-.ios-list-item:last-child {
-    border-radius: 0 0 var(--ios-radius-lg) var(--ios-radius-lg);
-    border-bottom: none;
-}
-
-/* iOS 开关 */
-.ios-toggle {
-    width: 51px;
-    height: 31px;
-    background: var(--ios-light-gray);
-    border-radius: 16px;
-    position: relative;
-    transition: background 0.3s;
-}
-
-.ios-toggle.active {
-    background: var(--ios-green);
-}
-
-/* iOS 提示 */
-.ios-alert {
-    background: rgba(255,255,255,0.95);
-    backdrop-filter: blur(20px);
-    border-radius: var(--ios-radius-lg);
-    padding: 16px;
-    margin: 12px 0;
-    text-align: center;
-}
-
-/* 移动端优化 */
-@media (max-width: 768px) {
-    .main .block-container {
-        padding: 0 12px 20px 12px !important;
-        max-width: 100% !important;
-    }
-    
-    .ios-card {
-        border-radius: var(--ios-radius);
-        margin-bottom: 8px;
-    }
-}
-
-/* 隐藏 Streamlit 默认元素 */
-header[data-testid="stHeader"] { display: none; }
-.stDeployButton { display: none; }
-
-/* iOS 录音按钮特殊样式 */
-.ios-record-btn {
-    width: 72px !important;
-    height: 72px !important;
-    border-radius: 50% !important;
-    background: var(--ios-red) !important;
-    border: 4px solid rgba(255,255,255,0.3) !important;
-    box-shadow: 0 4px 15px rgba(255,59,48,0.4) !important;
-    margin: 20px auto !important;
-    display: block !important;
-    transition: transform 0.2s !important;
-}
-
-.ios-record-btn:active {
-    transform: scale(0.95);
-}
-
-/* iOS 成功/错误提示 */
-.stAlert {
-    border-radius: var(--ios-radius) !important;
-    border: none !important;
-    background: rgba(52,199,89,0.1) !important; /* 成功绿 */
-}
-
-.stAlert[data-baseweb="notification"] {
-    background: rgba(255,59,48,0.1) !important; /* 错误红 */
-}
-
-/* iOS 分割线 */
+/* 统一分割线 */
 hr {
     border: none !important;
     height: 0.5px !important;
-    background: var(--ios-light-gray) !important;
-    margin: 16px 0 !important;
+    background-color: var(--border) !important;
+    margin: 20px 0 !important;
 }
 
-/* iOS 底部安全区 */
-.ios-safe-bottom {
-    height: 34px;
+/* 子标题 */
+.stSubheader {
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    color: #1C1C1E !important;
+    margin-bottom: 12px !important;
+}
+
+/* 侧边栏 */
+section[data-testid="stSidebar"] {
+    background-color: white !important;
+}
+
+/* 提示卡片 */
+div[data-testid="stMarkdownContainer"] div {
+    border-radius: var(--radius) !important;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .big-title { font-size: 24px !important; }
+    .subtitle { font-size: 14px !important; }
+    .main .block-container { padding: 1rem !important; }
+}
+
+/* 加载动画颜色 */
+.stSpinner > div {
+    border-top-color: var(--primary) !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ========== iOS 风格导航栏 ==========
-st.markdown("""
-<div class="ios-nav">
-    <div class="ios-nav-title">AI语音简报</div>
-</div>
-""", unsafe_allow_html=True)
+# ========== 标题 ==========
+st.markdown('<p class="big-title">🎙️ AI语音简报助手</p>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">语音直接转文字，自动生成简报</p>', unsafe_allow_html=True)
 
 # ========== API 密钥管理 ==========
 api_key = st.session_state.get("api_key", "")
 
 if not api_key:
-    # iOS 风格登录页
-    st.markdown("""
-    <div class="ios-card" style="text-align: center; padding: 32px 24px; margin-top: 20px;">
-        <div style="font-size: 64px; margin-bottom: 16px;">🎙️</div>
-        <h2 style="font-size: 22px; font-weight: 600; margin-bottom: 8px; color: var(--ios-text);">
-            欢迎使用
-        </h2>
-        <p style="font-size: 17px; color: var(--ios-gray); margin-bottom: 24px;">
-            语音转文字，智能生成简报
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.warning("⚠️ 首次使用需要输入 API 密钥")
     
-    # iOS 分组标题风格
-    st.markdown('<div class="ios-section-title">API 密钥设置</div>', unsafe_allow_html=True)
-    
-    with st.container():
-        st.markdown('<div class="ios-card">', unsafe_allow_html=True)
-        
+    with st.expander("🔑 点击此处输入 API 密钥", expanded=True):
         st.markdown("""
-        <p style="font-size: 15px; color: var(--ios-text-secondary); margin-bottom: 16px; line-height: 1.5;">
-            首次使用需要配置 API 密钥。请前往硅基流动官网获取免费密钥。
-        </p>
-        """, unsafe_allow_html=True)
+        **获取步骤：**
+        1. 访问 [硅基流动](https://cloud.siliconflow.cn/i/nZqCjymq )
+        2. 注册并完成实名认证
+        3. 创建您的API 密钥
+        4. 复制到下方输入框
+        """)
         
-        # iOS 风格输入框
         api_input = st.text_input(
-            "",
+            "API 密钥",
             value="",
             type="password",
             placeholder="sk-xxxxxxxxxxxxxxxx",
             key="api_key_input",
-            label_visibility="collapsed"
+            help="密钥以 sk- 开头"
         )
         
-        # iOS 风格主要按钮
-        if st.button("继续", type="primary", use_container_width=True, key="save_api_key"):
+        if st.button("✅ 确认并保存", type="primary", key="save_api_key"):
             if api_input and api_input.startswith("sk-"):
                 st.session_state.api_key = api_input
-                st.success("配置成功")
+                st.success("✅ API 密钥已保存！")
                 st.rerun()
             else:
-                st.error("密钥格式错误，应以 sk- 开头")
-        
-        # iOS 风格链接按钮
-        st.markdown("""
-        <a href="https://cloud.siliconflow.cn/i/nZqCjymq" target="_blank" 
-           style="display: block; text-align: center; color: var(--ios-blue); 
-                  font-size: 17px; text-decoration: none; margin-top: 16px; padding: 12px;">
-            获取免费 API 密钥 →
-        </a>
-        """, unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
+                st.error("❌ 请输入正确的 API 密钥（以 sk- 开头）")
     
     st.stop()
 
-# ========== 侧边栏（iOS 设置风格）=========
+# ========== 侧边栏 ==========
 with st.sidebar:
-    st.markdown('<div class="ios-section-title">设置</div>', unsafe_allow_html=True)
+    st.header("⚙️ 设置")
+    st.success("✅ API 已配置")
     
-    with st.container():
-        st.markdown('<div class="ios-card">', unsafe_allow_html=True)
-        st.markdown("""
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-            <span style="font-size: 17px; color: var(--ios-text);">API 状态</span>
-            <span style="color: var(--ios-green); font-size: 15px;">已配置</span>
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        if st.button("更换 API 密钥", use_container_width=True):
-            del st.session_state.api_key
-            st.rerun()
+    if st.button("🔄 更换 API 密钥"):
+        del st.session_state.api_key
+        st.rerun()
     
-    st.markdown('<div class="ios-safe-bottom"></div>', unsafe_allow_html=True)
+    st.divider()
+    st.caption("💡 AI简报_分享版")
 
 # ========== 语音转文字函数 ==========
 def transcribe_audio(audio_bytes, api_key):
     try:
-        client = OpenAI(api_key=api_key, base_url="https://api.siliconflow.cn/v1")
+        client = OpenAI(
+            api_key=api_key,
+            base_url="https://api.siliconflow.cn/v1"
+        )
         
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
             tmp_file.write(audio_bytes)
@@ -397,134 +269,107 @@ def transcribe_audio(audio_bytes, api_key):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-# ========== 主界面（iOS 标签页风格）=========
-st.markdown('<div class="ios-section-title">语音输入</div>', unsafe_allow_html=True)
+# ========== 主界面 ==========
+col1, col2 = st.columns([1, 1])
 
-# iOS 分段控制器
-tab_col1, tab_col2 = st.columns(2)
-with tab_col1:
-    record_tab = st.button("🎙️ 录音", use_container_width=True, type="primary" if st.session_state.get("input_tab", "record") == "record" else "secondary")
-    if record_tab:
-        st.session_state.input_tab = "record"
-
-with tab_col2:
-    upload_tab = st.button("📁 上传", use_container_width=True, type="primary" if st.session_state.get("input_tab", "record") == "upload" else "secondary")
-    if upload_tab:
-        st.session_state.input_tab = "upload"
-
-input_tab = st.session_state.get("input_tab", "record")
-
-# 录音标签页
-if input_tab == "record":
-    with st.container():
-        st.markdown('<div class="ios-card" style="text-align: center; padding: 24px;">', unsafe_allow_html=True)
-        
-        st.markdown("""
-        <p style="font-size: 15px; color: var(--ios-gray); margin-bottom: 20px;">
-            点击开始录音，说话后自动转写
-        </p>
-        """, unsafe_allow_html=True)
-        
-        try:
-            from streamlit_mic_recorder import mic_recorder
-            
-            audio = mic_recorder(
-                start_prompt="",
-                stop_prompt="",
-                just_once=True,
-                key="mic_ios"
-            )
-            
-            if audio and audio.get("bytes"):
-                with st.spinner("识别中..."):
-                    result = transcribe_audio(audio["bytes"], api_key)
-                    
-                    if result["success"]:
-                        st.session_state.transcribed_text = result["text"]
-                        st.success(f"识别完成，{len(result['text'])} 字")
-                        st.rerun()
-                    else:
-                        st.error("识别失败")
-                        
-        except ImportError:
-            st.error("录音组件未加载")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-
-# 上传标签页
-else:
-    with st.container():
-        st.markdown('<div class="ios-card">', unsafe_allow_html=True)
-        
-        st.markdown("""
-        <p style="font-size: 15px; color: var(--ios-gray); margin-bottom: 16px;">
-            支持 mp3、wav、m4a 格式
-        </p>
-        """, unsafe_allow_html=True)
-        
-        audio_file = st.file_uploader("", type=['mp3', 'wav', 'm4a', 'webm'], label_visibility="collapsed")
-        
-        if audio_file:
-            st.audio(audio_file, format=f'audio/{audio_file.type.split("/")[1]}')
-            
-            if st.button("开始识别", type="primary", use_container_width=True):
-                with st.spinner("识别中..."):
-                    result = transcribe_audio(audio_file.getvalue(), api_key)
-                    
-                    if result["success"]:
-                        st.session_state.transcribed_text = result["text"]
-                        st.success(f"识别完成，{len(result['text'])} 字")
-                        st.rerun()
-                    else:
-                        st.error("识别失败")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-
-st.markdown('<div class="ios-section-title">编辑与生成</div>', unsafe_allow_html=True)
-
-with st.container():
-    st.markdown('<div class="ios-card">', unsafe_allow_html=True)
+with col1:
+    st.subheader("🎤 语音输入")
     
-    # iOS 风格选择器
-    briefing_type = st.segmented_control(
-        "简报类型",
-        options=["会议纪要", "工作日报", "学习笔记", "新闻摘要"],
-        default="会议纪要",
-        key="briefing_type_ios"
+    st.markdown("""
+    <div style="background-color: #F2F2F7; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
+        <h4 style="margin: 0 0 8px 0; color: #1C1C1E;">方式一：实时录音转文字</h4>
+        <p style="color: #666; font-size: 14px; margin: 0;">
+            📱 iPhone 提示：请使用 Safari 浏览器<br>
+            点击录音 → 说话 → 自动转写填入右侧
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    try:
+        from streamlit_mic_recorder import mic_recorder
+        
+        audio = mic_recorder(
+            start_prompt="🎙️ 点击开始录音",
+            stop_prompt="⏹️ 点击停止",
+            just_once=True,
+            key="mic_recorder_ios"
+        )
+        
+        if audio and audio.get("bytes"):
+            with st.spinner("🤖 AI正在转写..."):
+                result = transcribe_audio(audio["bytes"], api_key)
+                
+                if result["success"]:
+                    st.session_state.transcribed_text = result["text"]
+                    st.success(f"✅ 转写完成！共 {len(result['text'])} 字")
+                    st.rerun()
+                else:
+                    st.error(f"❌ 转写失败：{result['error']}")
+                    
+    except ImportError:
+        st.error("⚠️ 录音组件加载失败")
+    
+    st.divider()
+    
+    st.subheader("📁 方式二：上传录音")
+    
+    st.info("""
+    💡 **iPhone 用户推荐此方式**：
+    1. 用"语音备忘录"录好音
+    2. 点击分享 → 存储到"文件"
+    3. 在这里选择文件上传
+    """)
+    
+    audio_file = st.file_uploader(
+        "选择录音文件", 
+        type=['mp3', 'wav', 'm4a', 'webm'],
+        help="支持 mp3, wav, m4a 格式"
     )
     
-    # 如果没有 segmented_control，使用普通 selectbox
-    if 'briefing_type_ios' not in st.session_state:
-        briefing_type = st.selectbox(
-            "简报类型",
-            ["会议纪要", "工作日报", "学习笔记", "新闻摘要"],
-            key="briefing_type"
-        )
+    if audio_file:
+        st.audio(audio_file, format=f'audio/{audio_file.type.split("/")[1]}')
+        
+        if st.button("🎯 开始转写", type="primary"):
+            with st.spinner("🤖 正在识别..."):
+                result = transcribe_audio(audio_file.getvalue(), api_key)
+                
+                if result["success"]:
+                    st.session_state.transcribed_text = result["text"]
+                    st.success(f"✅ 完成！共 {len(result['text'])} 字")
+                    st.rerun()
+                else:
+                    st.error(f"❌ 失败：{result['error']}")
+
+with col2:
+    st.subheader("📝 编辑与生成")
     
-    # 文本编辑区
+    briefing_type = st.selectbox(
+        "简报类型",
+        ["会议纪要", "工作日报", "学习笔记", "新闻摘要"],
+        key="briefing_type"
+    )
+    
+    default_text = st.session_state.get("transcribed_text", "")
+    
     content = st.text_area(
-        "",
-        value=st.session_state.get("transcribed_text", ""),
-        height=200,
-        placeholder="语音内容将显示在这里，可直接编辑...",
-        label_visibility="collapsed"
+        "编辑内容",
+        value=default_text,
+        height=300,
+        placeholder="语音转写内容会出现在这里..."
     )
     
     if content != st.session_state.get("transcribed_text", ""):
         st.session_state.transcribed_text = content
     
-    # 特殊要求（iOS 风格折叠）
-    with st.expander("高级选项"):
-        custom_req = st.text_input("特殊要求", placeholder="例如：突出重点、精简内容")
+    custom_req = st.text_input("特殊要求", placeholder="例如：重点突出数据")
     
-    # 生成按钮
     col_gen, col_clear = st.columns([3, 1])
     with col_gen:
-        if st.button("生成简报", type="primary", use_container_width=True):
+        if st.button("✨ 生成简报", type="primary", use_container_width=True):
             if not content.strip():
-                st.error("请输入内容")
+                st.error("❌ 内容不能为空")
             else:
-                with st.spinner("生成中..."):
+                with st.spinner("🤖 生成中..."):
                     try:
                         client = OpenAI(api_key=api_key, base_url="https://api.siliconflow.cn/v1")
                         
@@ -535,7 +380,7 @@ with st.container():
                             "新闻摘要": "整理成新闻摘要：1事件 2数据 3影响"
                         }
                         
-                        prompt = prompts.get(briefing_type, prompts["会议纪要"])
+                        prompt = prompts[briefing_type]
                         if custom_req:
                             prompt += f"。要求：{custom_req}"
                         
@@ -550,36 +395,26 @@ with st.container():
                         )
                         
                         st.session_state.generated_result = response.choices[0].message.content
-                        st.rerun()
                         
                     except Exception as e:
-                        st.error(f"生成失败：{str(e)}")
+                        st.error(f"❌ 生成失败：{str(e)}")
     
     with col_clear:
-        if st.button("清空", use_container_width=True):
+        if st.button("🗑️ 清空", use_container_width=True):
             st.session_state.transcribed_text = ""
             if "generated_result" in st.session_state:
                 del st.session_state.generated_result
             st.rerun()
     
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# 结果显示
-if "generated_result" in st.session_state:
-    st.markdown('<div class="ios-section-title">生成结果</div>', unsafe_allow_html=True)
-    
-    with st.container():
-        st.markdown('<div class="ios-card">', unsafe_allow_html=True)
+    if "generated_result" in st.session_state:
+        st.divider()
+        st.success("✅ 生成完成！")
         st.markdown(st.session_state.generated_result)
-        
         st.download_button(
-            "下载简报",
+            "📋 下载",
             st.session_state.generated_result,
-            file_name=f"简报_{briefing_type}.txt",
-            use_container_width=True
+            file_name=f"简报_{briefing_type}.txt"
         )
-        
-        st.markdown('</div>', unsafe_allow_html=True)
 
-# iOS 底部安全区
-st.markdown('<div class="ios-safe-bottom"></div>', unsafe_allow_html=True)
+st.divider()
+st.caption("Made with ❤️ | 语音版v2.1.2 - 风格优化版")
