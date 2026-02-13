@@ -94,9 +94,6 @@ if not api_key:
                     st.rerun()
                 else:
                     st.error("❌ 请输入正确的 API 密钥（以 sk- 开头）")
-        
-        with col2:
-            st.caption("💡 或设置环境变量 `SILICONFLOW_API_KEY`")
     
     st.stop()
 
@@ -151,7 +148,7 @@ with col1:
     # 方式一：实时录音
     st.markdown("""
     <div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
-        <h4 style="margin-top: 0;">方式一：实时录音转文字</h4>
+        <h4 style="margin-top: 0;">方式一：实时录音</h4>
         <p style="color: #666; font-size: 14px; margin: 0;">
             📱 iPhone 提示：请使用 Safari 浏览器<br>
             点击录音 → 说话 → 自动转写填入右侧
@@ -301,3 +298,4 @@ with col2:
 
 st.divider()
 st.caption("Made with ❤️ | 语音版v2.1.2 - iOS 优化版")
+
