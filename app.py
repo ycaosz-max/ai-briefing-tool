@@ -540,5 +540,4 @@ with col2:
         )
 
 st.divider()
-st.caption("Made with ❤️ | 分享版v2.2.0 - iOS 自动暗黑模式")
-
+st.caption("Made with ❤️ | 分享版 v2.2.0 - iOS 自动暗黑模式")
