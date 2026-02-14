@@ -247,48 +247,6 @@ hr {
 * {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
-
-/* 自定义加载提示样式 */
-.processing-hint {
-    background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-hover) 100%);
-    color: white;
-    padding: 15px 20px;
-    border-radius: 12px;
-    margin: 10px 0;
-    text-align: center;
-    font-size: 14px;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.8; }
-}
-
-.processing-steps {
-    background: var(--bg-secondary);
-    padding: 15px;
-    border-radius: 10px;
-    margin-top: 10px;
-    font-size: 13px;
-    color: var(--text-secondary);
-}
-
-.processing-steps .step {
-    margin: 8px 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.processing-steps .step.active {
-    color: var(--accent-color);
-    font-weight: 600;
-}
-
-.processing-steps .step.done {
-    color: #30d158;
-}
 </style>
 
 <!-- iOS 状态栏颜色适配 -->
@@ -413,24 +371,6 @@ def transcribe_audio(audio_bytes, api_key):
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
 
-# ========== 计算预估处理时间 ==========
-def estimate_processing_time(audio_bytes):
-    """估算处理时间（秒）"""
-    # 假设处理速度约为 10KB/秒
-    bytes_per_second = 10240
-    estimated_seconds = len(audio_bytes) / bytes_per_second
-    # 最少3秒，最多60秒
-    return max(3, min(int(estimated_seconds), 60))
-
-def format_file_size(bytes_val):
-    """格式化文件大小"""
-    if bytes_val < 1024:
-        return f"{bytes_val} B"
-    elif bytes_val < 1024 * 1024:
-        return f"{bytes_val / 1024:.1f} KB"
-    else:
-        return f"{bytes_val / (1024 * 1024):.2f} MB"
-
 # ========== 主界面 ==========
 col1, col2 = st.columns([1, 1])
 
@@ -462,26 +402,8 @@ with col1:
         )
         
         if audio and audio.get("bytes"):
-            audio_bytes = audio["bytes"]
-            file_size = format_file_size(len(audio_bytes))
-            est_time = estimate_processing_time(audio_bytes)
-            
-            # 显示处理提示
-            st.markdown(f"""
-            <div class="processing-hint">
-                🎙️ 录音已停止，准备转写...<br>
-                <small>📦 {file_size} · ⏱️ 预计需要 {est_time} 秒</small>
-            </div>
-            <div class="processing-steps">
-                <div class="step done">✓ 完成录音</div>
-                <div class="step active">⟳ 正在转写（请耐心等待）...</div>
-                <div class="step">○ 等待生成</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # 使用 spinner 显示详细进度
-            with st.spinner(f"🤖 AI正在转写中...（{file_size}，预计{est_time}秒）"):
-                result = transcribe_audio(audio_bytes, api_key)
+            with st.spinner("🤖 AI正在转写..."):
+                result = transcribe_audio(audio["bytes"], api_key)
                 
                 if result["success"]:
                     # 检查清理后的文本是否有效
@@ -520,31 +442,11 @@ with col1:
     )
     
     if audio_file:
-        audio_bytes = audio_file.getvalue()
-        file_size = format_file_size(len(audio_bytes))
-        est_time = estimate_processing_time(audio_bytes)
-        
         st.audio(audio_file, format=f'audio/{audio_file.type.split("/")[1]}')
         
-        # 显示文件信息和预估时间
-        st.info(f"📦 文件大小：**{file_size}** · ⏱️ 预计处理时间：**约{est_time}秒**")
-        
         if st.button("🎯 开始转写", type="primary", key="transcribe_upload"):
-            # 显示处理提示
-            st.markdown(f"""
-            <div class="processing-hint">
-                🚀 开始处理音频文件...<br>
-                <small>📦 {file_size} · ⏱️ 预计需要 {est_time} 秒，请耐心等待</small>
-            </div>
-            <div class="processing-steps">
-                <div class="step done">✓ 上传完成</div>
-                <div class="step active">⟳ AI正在识别（请勿关闭页面）...</div>
-                <div class="step">○ 等待结果</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            with st.spinner(f"🤖 正在识别中...（{file_size}，预计{est_time}秒，请耐心等待）"):
-                result = transcribe_audio(audio_bytes, api_key)
+            with st.spinner("🤖 正在识别..."):
+                result = transcribe_audio(audio_file.getvalue(), api_key)
                 
                 if result["success"]:
                     clean_text = result["text"]
