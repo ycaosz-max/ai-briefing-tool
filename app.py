@@ -2,6 +2,7 @@ import streamlit as st
 from openai import OpenAI
 import os
 import tempfile
+import json
 
 # ========== 页面设置 ==========
 st.set_page_config(
@@ -306,7 +307,7 @@ with st.sidebar:
     st.divider()
     st.caption("💡 AI简报_分享版 v2.2.0")
 
-# ========== 语音转文字函数（修复 text 问题） ==========
+# ========== 语音转文字函数（修复版） ==========
 def transcribe_audio(audio_bytes, api_key):
     tmp_path = None
     try:
@@ -326,22 +327,36 @@ def transcribe_audio(audio_bytes, api_key):
                 response_format="text"
             )
             
-            # 修复：处理返回结果，去除 "text" 前缀和引号
-            result_text = transcription
+            # 处理返回结果
+            result_text = ""
             
-            # 如果是对象，获取 text 属性
+            # 情况1：如果是对象，获取 text 属性
             if hasattr(transcription, 'text'):
                 result_text = transcription.text
+            
+            # 情况2：如果是字符串
             elif isinstance(transcription, str):
-                result_text = transcription
+                result_text = transcription.strip()
+                
+                # 尝试解析 JSON 格式 {"text": "..."}
+                if result_text.startswith('{') and result_text.endswith('}'):
+                    try:
+                        json_data = json.loads(result_text)
+                        if 'text' in json_data:
+                            result_text = json_data['text']
+                    except json.JSONDecodeError:
+                        pass  # 不是有效 JSON，保持原样
+                
+                # 去除 text= 前缀
+                elif result_text.lower().startswith('text='):
+                    result_text = result_text[5:]
+            
+            # 情况3：其他类型，转为字符串
             else:
                 result_text = str(transcription)
             
-            # 清理：去除 text= 前缀和引号
-            result_text = result_text.strip()
-            if result_text.lower().startswith('text='):
-                result_text = result_text[5:]
-            result_text = result_text.strip("'\"").strip()
+            # 最终清理
+            result_text = result_text.strip().strip("'\"").strip()
             
             # 如果结果就是 "text" 这个词，返回空
             if result_text.lower() == 'text':
