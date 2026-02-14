@@ -2,6 +2,7 @@ import streamlit as st
 from openai import OpenAI
 import os
 import tempfile
+import base64
 
 # ========== 页面设置 ==========
 st.set_page_config(
@@ -13,9 +14,7 @@ st.set_page_config(
 # ========== iOS 暗黑/明亮模式自动切换样式 ==========
 st.markdown("""
 <style>
-/* ========== 基础变量定义 ========== */
 :root {
-    /* 明亮模式默认 */
     --bg-primary: #ffffff;
     --bg-secondary: #f0f2f6;
     --bg-card: #ffffff;
@@ -24,13 +23,11 @@ st.markdown("""
     --border-color: #e0e0e0;
     --accent-color: #ff4b4b;
     --accent-hover: #ff3333;
-    --shadow: rgba(0, 0, 0, 0.1);
     --input-bg: #ffffff;
     --input-text: #1f1f1f;
     --button-text: #ffffff;
 }
 
-/* ========== iOS 暗黑模式检测 ========== */
 @media (prefers-color-scheme: dark) {
     :root {
         --bg-primary: #000000;
@@ -41,99 +38,70 @@ st.markdown("""
         --border-color: #38383a;
         --accent-color: #0a84ff;
         --accent-hover: #409cff;
-        --shadow: rgba(0, 0, 0, 0.5);
         --input-bg: #1c1c1e;
         --input-text: #ffffff;
         --button-text: #ffffff;
     }
-    
-    /* Streamlit 暗黑模式覆盖 */
-    .stApp {
-        background-color: var(--bg-primary) !important;
-    }
-    
+    .stApp { background-color: #000000 !important; }
     .stTextInput input, .stTextArea textarea {
-        background-color: var(--input-bg) !important;
-        color: var(--input-text) !important;
-        border-color: var(--border-color) !important;
+        background-color: #1c1c1e !important;
+        color: #ffffff !important;
+        border-color: #38383a !important;
     }
-    
     .stSelectbox > div > div {
-        background-color: var(--bg-card) !important;
-        color: var(--text-primary) !important;
+        background-color: #2c2c2e !important;
+        color: #ffffff !important;
     }
-    
-    .stExpander {
-        background-color: var(--bg-card) !important;
-        border-color: var(--border-color) !important;
-    }
-    
-    .stMarkdown {
-        color: var(--text-primary) !important;
-    }
-    
-    /* 侧边栏暗黑模式 */
-    .css-1d391kg, .css-1lcbmhc {
-        background-color: var(--bg-secondary) !important;
+    [data-testid="stSidebar"] {
+        background-color: #1c1c1e !important;
     }
 }
 
-/* ========== iOS 基础修复 ========== */
 * {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
 }
 
-/* ========== 全局样式应用 ========== */
 .stApp {
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition: all 0.3s ease;
 }
 
-/* 标题样式 */
 .big-title {
     font-size: 32px;
     font-weight: bold;
     color: var(--text-primary);
     margin-bottom: 8px;
-    transition: color 0.3s ease;
 }
 
 .subtitle {
     font-size: 16px;
     color: var(--text-secondary);
     margin-bottom: 24px;
-    transition: color 0.3s ease;
 }
 
-/* 输入框样式 - 自动适应主题 */
 .stTextInput input, .stTextArea textarea {
     -webkit-appearance: none !important;
     -webkit-user-select: text !important;
     user-select: text !important;
     font-size: 16px !important;
     touch-action: manipulation;
-    -webkit-border-radius: 10px;
     border-radius: 10px;
     background-color: var(--input-bg);
     color: var(--input-text);
     border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
 }
 
-/* 输入框焦点样式 */
 .stTextInput input:focus, .stTextArea textarea:focus {
     outline: none !important;
     border-color: var(--accent-color) !important;
     box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.3) !important;
 }
 
-/* 按钮样式 - 高对比度 */
 .stButton button {
     -webkit-appearance: none;
     touch-action: manipulation;
-    -webkit-border-radius: 10px;
     border-radius: 10px;
     background-color: var(--accent-color) !important;
     color: var(--button-text) !important;
@@ -147,29 +115,10 @@ st.markdown("""
     transform: translateY(-1px);
 }
 
-.stButton button:active {
-    transform: translateY(0);
-}
-
-/* 卡片/容器样式 */
-.stExpander {
-    background-color: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
-
-/* 信息框样式 - 暗黑模式适配 */
 .stAlert {
     background-color: var(--bg-card) !important;
     border-color: var(--border-color) !important;
     color: var(--text-primary) !important;
-}
-
-.stInfo {
-    background-color: rgba(10, 132, 255, 0.1) !important;
-    border-left-color: var(--accent-color) !important;
 }
 
 .stSuccess {
@@ -177,78 +126,27 @@ st.markdown("""
     border-left-color: #30d158 !important;
 }
 
-.stWarning {
-    background-color: rgba(255, 159, 10, 0.1) !important;
-    border-left-color: #ff9f0a !important;
+.stInfo {
+    background-color: rgba(10, 132, 255, 0.1) !important;
+    border-left-color: var(--accent-color) !important;
 }
 
-.stError {
-    background-color: rgba(255, 69, 58, 0.1) !important;
-    border-left-color: #ff453a !important;
-}
-
-/* 文件上传区域 */
-.stFileUploader > div > div {
-    background-color: var(--bg-secondary) !important;
-    border-color: var(--border-color) !important;
-    color: var(--text-primary) !important;
-}
-
-/* 分割线 */
-hr {
-    border-color: var(--border-color) !important;
-}
-
-/* 下载按钮 */
-.stDownloadButton button {
-    background-color: var(--bg-card) !important;
-    color: var(--accent-color) !important;
-    border: 2px solid var(--accent-color) !important;
-}
-
-.stDownloadButton button:hover {
-    background-color: var(--accent-color) !important;
-    color: var(--button-text) !important;
-}
-
-/* 侧边栏样式 */
-.css-1d391kg, .css-1lcbmhc, [data-testid="stSidebar"] {
+[data-testid="stSidebar"] {
     background-color: var(--bg-secondary) !important;
 }
 
-/* 选择框样式 */
-.stSelectbox > div > div {
-    background-color: var(--bg-card);
-    border-color: var(--border-color) !important;
-    color: var(--text-primary);
-    border-radius: 10px;
-}
-
-/* 移动端适配 */
 @media (max-width: 768px) {
-    .big-title { 
-        font-size: 26px !important; 
-    }
-    .subtitle { 
-        font-size: 14px !important; 
-    }
-    .main .block-container { 
-        padding: 1rem; 
-    }
-    
-    /* iOS 安全区域适配 */
-    .stApp {
-        padding-bottom: env(safe-area-inset-bottom);
-    }
+    .big-title { font-size: 26px !important; }
+    .subtitle { font-size: 14px !important; }
+    .main .block-container { padding: 1rem; }
+    .stApp { padding-bottom: env(safe-area-inset-bottom); }
 }
 
-/* 平滑过渡动画 */
 * {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 </style>
 
-<!-- iOS 状态栏颜色适配 -->
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
@@ -258,7 +156,7 @@ hr {
 st.markdown('<p class="big-title">🎙️ AI语音简报助手</p>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">语音直接转文字，自动生成简报</p>', unsafe_allow_html=True)
 
-# ========== API 密钥管理（主界面） ==========
+# ========== API 密钥管理 ==========
 api_key = st.session_state.get("api_key", "")
 
 if not api_key:
@@ -298,42 +196,209 @@ if not api_key:
 with st.sidebar:
     st.header("⚙️ 设置")
     st.success("✅ API 已配置")
-    
     if st.button("🔄 更换 API 密钥"):
         del st.session_state.api_key
         st.rerun()
-    
     st.divider()
-    st.caption("💡 AI简报_分享版 v2.2.0")
+    st.caption("💡 AI简报_分享版 v2.2.2")
 
-# ========== 语音转文字函数（修复版） ==========
+# ========== 语音转文字函数（修复 text 问题） ==========
 def transcribe_audio(audio_bytes, api_key):
     tmp_path = None
     try:
-        client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.siliconflow.cn/v1"
-        )
+        client = OpenAI(api_key=api_key, base_url="https://api.siliconflow.cn/v1")
         
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
             tmp_file.write(audio_bytes)
             tmp_path = tmp_file.name
         
         with open(tmp_path, "rb") as audio:
+            # 使用 verbose_json 格式获取详细结果
             transcription = client.audio.transcriptions.create(
                 model="FunAudioLLM/SenseVoiceSmall",
                 file=audio,
-                response_format="text"
+                response_format="verbose_json"  # 改为 verbose_json 获取结构化数据
             )
-        
-        return {"success": True, "text": transcription}
-        
+            
+            # 调试：打印原始响应类型和内容
+            print(f"Transcription type: {type(transcription)}")
+            print(f"Transcription value: {transcription}")
+            
+            # 处理不同的返回格式
+            result_text = ""
+            
+            # 如果是对象，尝试获取 text 属性
+            if hasattr(transcription, 'text'):
+                result_text = transcription.text
+            # 如果是字典
+            elif isinstance(transcription, dict):
+                result_text = transcription.get('text', '')
+            # 如果是字符串（可能包含 "text" 前缀）
+            elif isinstance(transcription, str):
+                result_text = transcription
+                # 去除可能的 "text=" 前缀
+                if result_text.startswith('text='):
+                    result_text = result_text[5:]
+            else:
+                # 尝试转换为字符串
+                result_text = str(transcription)
+                # 去除常见的包装字符
+                result_text = result_text.strip("'\"")
+                if result_text.startswith('text='):
+                    result_text = result_text[5:]
+            
+            # 最终清理：确保不是 "text" 这个单词本身
+            if result_text.strip().lower() == 'text':
+                result_text = ""
+            
+            return {"success": True, "text": result_text}
+            
     except Exception as e:
-        return {"success": False, "error": str(e)}
-    
+        return {"success": False, "error": str(e), "text": ""}
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
+
+# ========== iOS 优化下载组件 ==========
+def ios_friendly_download(content, filename, briefing_type):
+    b64 = base64.b64encode(content.encode('utf-8')).decode()
+    unique_id = f"{briefing_type}_{abs(hash(content)) % 10000}"
+    
+    html = f"""
+    <script>
+    function download_{unique_id}() {{
+        const link = document.createElement('a');
+        link.href = "data:text/plain;charset=utf-8;base64,{b64}";
+        link.download = "{filename}";
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {{
+            document.body.removeChild(link);
+        }}, 100);
+        showToast("📥 文件已下载");
+    }}
+    
+    function copy_{unique_id}() {{
+        const text = atob("{b64}");
+        navigator.clipboard.writeText(text).then(() => {{
+            showToast("📋 内容已复制到剪贴板");
+        }}).catch(err => {{
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast("📋 内容已复制");
+        }});
+    }}
+    
+    function showToast(message) {{
+        const oldToast = document.getElementById('ios-toast');
+        if (oldToast) oldToast.remove();
+        
+        const toast = document.createElement('div');
+        toast.id = 'ios-toast';
+        toast.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #30d158;
+            color: white;
+            padding: 20px 30px;
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            z-index: 999999;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: fadeIn 0.3s ease;
+            min-width: 200px;
+        `;
+        toast.innerHTML = `
+            <div style="font-size: 40px; margin-bottom: 8px;">✓</div>
+            <div>${{message}}</div>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {{
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.5s';
+            setTimeout(() => toast.remove(), 500);
+        }}, 2500);
+    }}
+    </script>
+    
+    <style>
+    @keyframes fadeIn {{
+        from {{ opacity: 0; transform: translate(-50%, -50%) scale(0.9); }}
+        to {{ opacity: 1; transform: translate(-50%, -50%) scale(1); }}
+    }}
+    
+    .ios-btn-group {{
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+    }}
+    
+    .ios-btn {{
+        flex: 1;
+        padding: 12px 20px;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }}
+    
+    .ios-btn-primary {{
+        background-color: var(--accent-color, #0a84ff);
+        color: white;
+    }}
+    
+    .ios-btn-secondary {{
+        background-color: var(--bg-card, #f0f2f6);
+        color: var(--accent-color, #0a84ff);
+        border: 2px solid var(--accent-color, #0a84ff);
+    }}
+    
+    .ios-btn:active {{
+        transform: scale(0.95);
+        opacity: 0.8;
+    }}
+    
+    .ios-tip {{
+        margin-top: 12px;
+        padding: 12px;
+        background: var(--bg-secondary, #f0f2f6);
+        border-radius: 10px;
+        font-size: 13px;
+        color: var(--text-secondary, #666);
+        line-height: 1.5;
+    }}
+    </style>
+    
+    <div class="ios-btn-group">
+        <button class="ios-btn ios-btn-primary" onclick="download_{unique_id}()">
+            ⬇️ 下载文件
+        </button>
+        <button class="ios-btn ios-btn-secondary" onclick="copy_{unique_id}()">
+            📋 复制内容
+        </button>
+    </div>
+    
+    <div class="ios-tip">
+        💡 <strong>iOS 提示：</strong><br>
+        • 下载的文件可在"文件"App 或浏览器下载记录中找到<br>
+        • 如果下载未开始，请使用"复制内容"粘贴到备忘录保存
+    </div>
+    """
+    
+    st.markdown(html, unsafe_allow_html=True)
 
 # ========== 主界面 ==========
 col1, col2 = st.columns([1, 1])
@@ -341,7 +406,6 @@ col1, col2 = st.columns([1, 1])
 with col1:
     st.subheader("🎤 语音输入")
     
-    # 方式一：实时录音
     st.markdown("""
     <div style="padding: 15px; border-radius: 12px; margin-bottom: 10px; 
                 background-color: var(--bg-secondary); 
@@ -370,9 +434,16 @@ with col1:
                 result = transcribe_audio(audio["bytes"], api_key)
                 
                 if result["success"]:
-                    st.session_state.transcribed_text = result["text"]
-                    st.success(f"✅ 转写完成！共 {len(result['text'])} 字")
-                    st.rerun()
+                    # 清理后的文本
+                    clean_text = result["text"]
+                    
+                    # 额外检查：如果文本就是 "text" 或为空，显示警告
+                    if not clean_text or clean_text.strip().lower() in ['text', '']:
+                        st.warning("⚠️ 转写结果为空，请检查录音是否清晰")
+                    else:
+                        st.session_state.transcribed_text = clean_text
+                        st.success(f"✅ 转写完成！共 {len(clean_text)} 字")
+                        st.rerun()
                 else:
                     st.error(f"❌ 转写失败：{result['error']}")
                     
@@ -384,7 +455,6 @@ with col1:
     
     st.divider()
     
-    # 方式二：上传录音（iOS 推荐）
     st.subheader("📁 方式二：上传录音")
     
     st.info("""
@@ -408,9 +478,13 @@ with col1:
                 result = transcribe_audio(audio_file.getvalue(), api_key)
                 
                 if result["success"]:
-                    st.session_state.transcribed_text = result["text"]
-                    st.success(f"✅ 完成！共 {len(result['text'])} 字")
-                    st.rerun()
+                    clean_text = result["text"]
+                    if not clean_text or clean_text.strip().lower() in ['text', '']:
+                        st.warning("⚠️ 转写结果为空，请检查音频文件")
+                    else:
+                        st.session_state.transcribed_text = clean_text
+                        st.success(f"✅ 完成！共 {len(clean_text)} 字")
+                        st.rerun()
                 else:
                     st.error(f"❌ 失败：{result['error']}")
 
@@ -445,10 +519,7 @@ with col2:
             else:
                 with st.spinner("🤖 生成中..."):
                     try:
-                        client = OpenAI(
-                            api_key=api_key, 
-                            base_url="https://api.siliconflow.cn/v1"
-                        )
+                        client = OpenAI(api_key=api_key, base_url="https://api.siliconflow.cn/v1")
                         
                         prompts = {
                             "会议纪要": "整理成会议纪要：1主题 2讨论 3决议 4待办",
@@ -487,12 +558,12 @@ with col2:
         st.divider()
         st.success("✅ 生成完成！")
         st.markdown(st.session_state.generated_result)
-        st.download_button(
-            "📋 下载",
+        
+        ios_friendly_download(
             st.session_state.generated_result,
-            file_name=f"简报_{briefing_type}.txt",
-            mime="text/plain"
+            f"简报_{briefing_type}.txt",
+            briefing_type
         )
 
 st.divider()
-st.caption("Made with ❤️ | 语音版v2.2.0 - iOS 自动暗黑模式")
+st.caption("Made with ❤️ | 语音版v2.2.2 - 修复 text 显示问题")
