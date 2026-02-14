@@ -4,6 +4,51 @@ import os
 import tempfile
 import json
 
+# ========== v2.2.1 升级：版本号与配置集中管理 ==========
+VERSION = "2.2.1"
+
+CONFIG = {
+    "version": VERSION,
+    "api": {
+        "base_url": "https://api.siliconflow.cn/v1",
+        "timeout": 60
+    },
+    "models": {
+        "transcribe": "FunAudioLLM/SenseVoiceSmall",
+        "generate": "deepseek-ai/DeepSeek-V3"
+    },
+    "theme": {
+        "light": {
+            "bg_primary": "#ffffff",
+            "bg_secondary": "#f0f2f6",
+            "bg_card": "#ffffff",
+            "text_primary": "#1f1f1f",
+            "text_secondary": "#666666",
+            "border_color": "#e0e0e0",
+            "accent_color": "#ff4b4b",
+            "accent_hover": "#ff3333",
+            "shadow": "rgba(0, 0, 0, 0.1)",
+            "input_bg": "#ffffff",
+            "input_text": "#1f1f1f",
+            "button_text": "#ffffff"
+        },
+        "dark": {
+            "bg_primary": "#000000",
+            "bg_secondary": "#1c1c1e",
+            "bg_card": "#2c2c2e",
+            "text_primary": "#ffffff",
+            "text_secondary": "#8e8e93",
+            "border_color": "#38383a",
+            "accent_color": "#0a84ff",
+            "accent_hover": "#409cff",
+            "shadow": "rgba(0, 0, 0, 0.5)",
+            "input_bg": "#1c1c1e",
+            "input_text": "#ffffff",
+            "button_text": "#ffffff"
+        }
+    }
+}
+
 # ========== 页面设置 ==========
 st.set_page_config(
     page_title="AI语音简报助手", 
@@ -11,105 +56,104 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# ========== iOS 暗黑/明亮模式自动切换样式 ==========
-st.markdown("""
+# ========== v2.2.1 升级：CSS 变量引用 CONFIG ==========
+st.markdown(f"""
 <style>
-/* ========== 基础变量定义 ========== */
-:root {
-    /* 明亮模式默认 */
-    --bg-primary: #ffffff;
-    --bg-secondary: #f0f2f6;
-    --bg-card: #ffffff;
-    --text-primary: #1f1f1f;
-    --text-secondary: #666666;
-    --border-color: #e0e0e0;
-    --accent-color: #ff4b4b;
-    --accent-hover: #ff3333;
-    --shadow: rgba(0, 0, 0, 0.1);
-    --input-bg: #ffffff;
-    --input-text: #1f1f1f;
-    --button-text: #ffffff;
-}
+/* ========== 基础变量定义（引用 CONFIG） ========== */
+:root {{
+    --bg-primary: {CONFIG['theme']['light']['bg_primary']};
+    --bg-secondary: {CONFIG['theme']['light']['bg_secondary']};
+    --bg-card: {CONFIG['theme']['light']['bg_card']};
+    --text-primary: {CONFIG['theme']['light']['text_primary']};
+    --text-secondary: {CONFIG['theme']['light']['text_secondary']};
+    --border-color: {CONFIG['theme']['light']['border_color']};
+    --accent-color: {CONFIG['theme']['light']['accent_color']};
+    --accent-hover: {CONFIG['theme']['light']['accent_hover']};
+    --shadow: {CONFIG['theme']['light']['shadow']};
+    --input-bg: {CONFIG['theme']['light']['input_bg']};
+    --input-text: {CONFIG['theme']['light']['input_text']};
+    --button-text: {CONFIG['theme']['light']['button_text']};
+}}
 
 /* ========== iOS 暗黑模式检测 ========== */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --bg-primary: #000000;
-        --bg-secondary: #1c1c1e;
-        --bg-card: #2c2c2e;
-        --text-primary: #ffffff;
-        --text-secondary: #8e8e93;
-        --border-color: #38383a;
-        --accent-color: #0a84ff;
-        --accent-hover: #409cff;
-        --shadow: rgba(0, 0, 0, 0.5);
-        --input-bg: #1c1c1e;
-        --input-text: #ffffff;
-        --button-text: #ffffff;
-    }
+@media (prefers-color-scheme: dark) {{
+    :root {{
+        --bg-primary: {CONFIG['theme']['dark']['bg_primary']};
+        --bg-secondary: {CONFIG['theme']['dark']['bg_secondary']};
+        --bg-card: {CONFIG['theme']['dark']['bg_card']};
+        --text-primary: {CONFIG['theme']['dark']['text_primary']};
+        --text-secondary: {CONFIG['theme']['dark']['text_secondary']};
+        --border-color: {CONFIG['theme']['dark']['border_color']};
+        --accent-color: {CONFIG['theme']['dark']['accent_color']};
+        --accent-hover: {CONFIG['theme']['dark']['accent_hover']};
+        --shadow: {CONFIG['theme']['dark']['shadow']};
+        --input-bg: {CONFIG['theme']['dark']['input_bg']};
+        --input-text: {CONFIG['theme']['dark']['input_text']};
+        --button-text: {CONFIG['theme']['dark']['button_text']};
+    }}
     
     /* Streamlit 暗黑模式覆盖 */
-    .stApp {
+    .stApp {{
         background-color: var(--bg-primary) !important;
-    }
+    }}
     
-    .stTextInput input, .stTextArea textarea {
+    .stTextInput input, .stTextArea textarea {{
         background-color: var(--input-bg) !important;
         color: var(--input-text) !important;
         border-color: var(--border-color) !important;
-    }
+    }}
     
-    .stSelectbox > div > div {
+    .stSelectbox > div > div {{
         background-color: var(--bg-card) !important;
         color: var(--text-primary) !important;
-    }
+    }}
     
-    .stExpander {
+    .stExpander {{
         background-color: var(--bg-card) !important;
         border-color: var(--border-color) !important;
-    }
+    }}
     
-    .stMarkdown {
+    .stMarkdown {{
         color: var(--text-primary) !important;
-    }
+    }}
     
     /* 侧边栏暗黑模式 */
-    .css-1d391kg, .css-1lcbmhc {
+    .css-1d391kg, .css-1lcbmhc {{
         background-color: var(--bg-secondary) !important;
-    }
-}
+    }}
+}}
 
 /* ========== iOS 基础修复 ========== */
-* {
+* {{
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
-}
+}}
 
 /* ========== 全局样式应用 ========== */
-.stApp {
+.stApp {{
     background-color: var(--bg-primary);
     color: var(--text-primary);
     transition: background-color 0.3s ease, color 0.3s ease;
-}
+}}
 
 /* 标题样式 */
-.big-title {
+.big-title {{
     font-size: 32px;
     font-weight: bold;
     color: var(--text-primary);
     margin-bottom: 8px;
     transition: color 0.3s ease;
-}
+}}
 
-.subtitle {
+.subtitle {{
     font-size: 16px;
     color: var(--text-secondary);
     margin-bottom: 24px;
     transition: color 0.3s ease;
-}
+}}
 
 /* 输入框样式 - 自动适应主题 */
-.stTextInput input, .stTextArea textarea {
+.stTextInput input, .stTextArea textarea {{
     -webkit-appearance: none !important;
     -webkit-user-select: text !important;
     user-select: text !important;
@@ -121,17 +165,17 @@ st.markdown("""
     color: var(--input-text);
     border: 1px solid var(--border-color);
     transition: all 0.3s ease;
-}
+}}
 
 /* 输入框焦点样式 */
-.stTextInput input:focus, .stTextArea textarea:focus {
+.stTextInput input:focus, .stTextArea textarea:focus {{
     outline: none !important;
     border-color: var(--accent-color) !important;
     box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.3) !important;
-}
+}}
 
 /* 按钮样式 - 高对比度 */
-.stButton button {
+.stButton button {{
     -webkit-appearance: none;
     touch-action: manipulation;
     -webkit-border-radius: 10px;
@@ -141,118 +185,118 @@ st.markdown("""
     border: none !important;
     font-weight: 600;
     transition: all 0.2s ease;
-}
+}}
 
-.stButton button:hover {
+.stButton button:hover {{
     background-color: var(--accent-hover) !important;
     transform: translateY(-1px);
-}
+}}
 
-.stButton button:active {
+.stButton button:active {{
     transform: translateY(0);
-}
+}}
 
 /* 卡片/容器样式 */
-.stExpander {
+.stExpander {{
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 12px;
     overflow: hidden;
     transition: all 0.3s ease;
-}
+}}
 
 /* 信息框样式 - 暗黑模式适配 */
-.stAlert {
+.stAlert {{
     background-color: var(--bg-card) !important;
     border-color: var(--border-color) !important;
     color: var(--text-primary) !important;
-}
+}}
 
-.stInfo {
+.stInfo {{
     background-color: rgba(10, 132, 255, 0.1) !important;
     border-left-color: var(--accent-color) !important;
-}
+}}
 
-.stSuccess {
+.stSuccess {{
     background-color: rgba(48, 209, 88, 0.1) !important;
     border-left-color: #30d158 !important;
-}
+}}
 
-.stWarning {
+.stWarning {{
     background-color: rgba(255, 159, 10, 0.1) !important;
     border-left-color: #ff9f0a !important;
-}
+}}
 
-.stError {
+.stError {{
     background-color: rgba(255, 69, 58, 0.1) !important;
     border-left-color: #ff453a !important;
-}
+}}
 
 /* 文件上传区域 */
-.stFileUploader > div > div {
+.stFileUploader > div > div {{
     background-color: var(--bg-secondary) !important;
     border-color: var(--border-color) !important;
     color: var(--text-primary) !important;
-}
+}}
 
 /* 分割线 */
-hr {
+hr {{
     border-color: var(--border-color) !important;
-}
+}}
 
 /* 下载按钮 */
-.stDownloadButton button {
+.stDownloadButton button {{
     background-color: var(--bg-card) !important;
     color: var(--accent-color) !important;
     border: 2px solid var(--accent-color) !important;
-}
+}}
 
-.stDownloadButton button:hover {
+.stDownloadButton button:hover {{
     background-color: var(--accent-color) !important;
     color: var(--button-text) !important;
-}
+}}
 
 /* 侧边栏样式 */
-.css-1d391kg, .css-1lcbmhc, [data-testid="stSidebar"] {
+.css-1d391kg, .css-1lcbmhc, [data-testid="stSidebar"] {{
     background-color: var(--bg-secondary) !important;
-}
+}}
 
 /* 选择框样式 */
-.stSelectbox > div > div {
+.stSelectbox > div > div {{
     background-color: var(--bg-card);
     border-color: var(--border-color) !important;
     color: var(--text-primary);
     border-radius: 10px;
-}
+}}
 
 /* 移动端适配 */
-@media (max-width: 768px) {
-    .big-title { 
+@media (max-width: 768px) {{
+    .big-title {{ 
         font-size: 26px !important; 
-    }
-    .subtitle { 
+    }}
+    .subtitle {{ 
         font-size: 14px !important; 
-    }
-    .main .block-container { 
+    }}
+    .main .block-container {{ 
         padding: 1rem; 
-    }
+    }}
     
     /* iOS 安全区域适配 */
-    .stApp {
+    .stApp {{
         padding-bottom: env(safe-area-inset-bottom);
-    }
-}
+    }}
+}}
 
 /* 平滑过渡动画 */
-* {
+* {{
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-}
-</style>
+}}
 
 <!-- iOS 状态栏颜色适配 -->
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+</style>
 """, unsafe_allow_html=True)
 
 # ========== 标题 ==========
@@ -305,16 +349,73 @@ with st.sidebar:
         st.rerun()
     
     st.divider()
-    st.caption("💡 AI简报_分享版 v2.2.0")
+    st.caption(f"💡 AI简报_分享版 v{CONFIG['version']}")
 
-# ========== 语音转文字函数（修复版） ==========
-def transcribe_audio(audio_bytes, api_key):
+# ========== v2.2.1 升级：提取 OpenAI 客户端初始化函数 ==========
+@st.cache_resource
+def get_openai_client(api_key: str) -> OpenAI:
+    """获取 OpenAI 客户端（带缓存）"""
+    return OpenAI(
+        api_key=api_key,
+        base_url=CONFIG['api']['base_url'],
+        timeout=CONFIG['api']['timeout']
+    )
+
+# ========== v2.2.1 升级：错误分类处理 ==========
+def classify_error(error: Exception) -> dict:
+    """分类错误类型"""
+    error_str = str(error).lower()
+    
+    # 认证错误
+    if any(kw in error_str for kw in ['401', 'unauthorized', 'invalid api key', 'authentication']):
+        return {
+            "type": "auth",
+            "title": "🔐 认证失败",
+            "message": "API 密钥无效或已过期，请检查密钥是否正确",
+            "action": "更换密钥"
+        }
+    
+    # 网络错误
+    elif any(kw in error_str for kw in ['connection', 'timeout', 'network', 'dns', '404', '503']):
+        return {
+            "type": "network",
+            "title": "📡 网络错误",
+            "message": "无法连接到服务器，请检查网络连接或稍后重试",
+            "action": "重试"
+        }
+    
+    # 格式/参数错误
+    elif any(kw in error_str for kw in ['400', 'bad request', 'invalid', 'format']):
+        return {
+            "type": "format",
+            "title": "⚠️ 请求格式错误",
+            "message": "音频格式不支持或文件损坏，请尝试其他文件",
+            "action": "更换文件"
+        }
+    
+    # 配额/限制错误
+    elif any(kw in error_str for kw in ['429', 'quota', 'rate limit', 'insufficient']):
+        return {
+            "type": "quota",
+            "title": "💰 额度不足",
+            "message": "API 调用额度已用完或请求过于频繁",
+            "action": "检查额度"
+        }
+    
+    # 未知错误
+    else:
+        return {
+            "type": "unknown",
+            "title": "❌ 未知错误",
+            "message": f"发生未知错误：{str(error)}",
+            "action": "重试"
+        }
+
+# ========== 语音转文字函数（v2.2.1 升级：使用统一客户端 + 错误分类） ==========
+def transcribe_audio(audio_bytes: bytes, api_key: str) -> dict:
     tmp_path = None
     try:
-        client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.siliconflow.cn/v1"
-        )
+        client = get_openai_client(api_key)
         
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
             tmp_file.write(audio_bytes)
@@ -322,50 +423,49 @@ def transcribe_audio(audio_bytes, api_key):
         
         with open(tmp_path, "rb") as audio:
             transcription = client.audio.transcriptions.create(
-                model="FunAudioLLM/SenseVoiceSmall",
+                model=CONFIG['models']['transcribe'],
                 file=audio,
                 response_format="text"
             )
             
-            # 处理返回结果
+            # 处理返回结果（保持 v2.2.0 清洗逻辑）
             result_text = ""
             
-            # 情况1：如果是对象，获取 text 属性
             if hasattr(transcription, 'text'):
                 result_text = transcription.text
-            
-            # 情况2：如果是字符串
             elif isinstance(transcription, str):
                 result_text = transcription.strip()
                 
-                # 尝试解析 JSON 格式 {"text": "..."}
                 if result_text.startswith('{') and result_text.endswith('}'):
                     try:
                         json_data = json.loads(result_text)
                         if 'text' in json_data:
                             result_text = json_data['text']
                     except json.JSONDecodeError:
-                        pass  # 不是有效 JSON，保持原样
+                        pass
                 
-                # 去除 text= 前缀
                 elif result_text.lower().startswith('text='):
                     result_text = result_text[5:]
-            
-            # 情况3：其他类型，转为字符串
             else:
                 result_text = str(transcription)
             
-            # 最终清理
             result_text = result_text.strip().strip("'\"").strip()
             
-            # 如果结果就是 "text" 这个词，返回空
             if result_text.lower() == 'text':
                 result_text = ""
         
         return {"success": True, "text": result_text}
         
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        error_info = classify_error(e)
+        return {
+            "success": False, 
+            "error_type": error_info["type"],
+            "error_title": error_info["title"],
+            "error_message": error_info["message"],
+            "error_action": error_info["action"],
+            "error_raw": str(e)
+        }
     
     finally:
         if tmp_path and os.path.exists(tmp_path):
@@ -406,7 +506,6 @@ with col1:
                 result = transcribe_audio(audio["bytes"], api_key)
                 
                 if result["success"]:
-                    # 检查清理后的文本是否有效
                     clean_text = result["text"]
                     if not clean_text or clean_text.strip() == "":
                         st.warning("⚠️ 转写结果为空，请检查录音是否清晰")
@@ -415,7 +514,24 @@ with col1:
                         st.success(f"✅ 转写完成！共 {len(clean_text)} 字")
                         st.rerun()
                 else:
-                    st.error(f"❌ 转写失败：{result['error']}")
+                    # v2.2.1 升级：根据错误类型显示不同提示
+                    error_type = result.get("error_type", "unknown")
+                    error_title = result.get("error_title", "错误")
+                    error_message = result.get("error_message", result["error_raw"])
+                    
+                    if error_type == "auth":
+                        st.error(f"{error_title}：{error_message}")
+                        if st.button("🔄 重新输入密钥", key="reauth_mic"):
+                            del st.session_state.api_key
+                            st.rerun()
+                    elif error_type == "network":
+                        st.warning(f"{error_title}：{error_message}")
+                    elif error_type == "format":
+                        st.warning(f"{error_title}：{error_message}")
+                    elif error_type == "quota":
+                        st.error(f"{error_title}：{error_message}")
+                    else:
+                        st.error(f"{error_title}：{error_message}")
                     
     except ImportError:
         st.error("⚠️ 录音组件加载失败，请使用方式二上传文件")
@@ -457,7 +573,24 @@ with col1:
                         st.success(f"✅ 完成！共 {len(clean_text)} 字")
                         st.rerun()
                 else:
-                    st.error(f"❌ 失败：{result['error']}")
+                    # v2.2.1 升级：根据错误类型显示不同提示
+                    error_type = result.get("error_type", "unknown")
+                    error_title = result.get("error_title", "错误")
+                    error_message = result.get("error_message", result["error_raw"])
+                    
+                    if error_type == "auth":
+                        st.error(f"{error_title}：{error_message}")
+                        if st.button("🔄 重新输入密钥", key="reauth_upload"):
+                            del st.session_state.api_key
+                            st.rerun()
+                    elif error_type == "network":
+                        st.warning(f"{error_title}：{error_message}")
+                    elif error_type == "format":
+                        st.warning(f"{error_title}：{error_message}")
+                    elif error_type == "quota":
+                        st.error(f"{error_title}：{error_message}")
+                    else:
+                        st.error(f"{error_title}：{error_message}")
 
 with col2:
     st.subheader("📝 编辑与生成")
@@ -490,10 +623,8 @@ with col2:
             else:
                 with st.spinner("🤖 生成中..."):
                     try:
-                        client = OpenAI(
-                            api_key=api_key, 
-                            base_url="https://api.siliconflow.cn/v1"
-                        )
+                        # v2.2.1 升级：使用统一客户端
+                        client = get_openai_client(api_key)
                         
                         prompts = {
                             "会议纪要": "整理成会议纪要：1主题 2讨论 3决议 4待办",
@@ -507,7 +638,7 @@ with col2:
                             prompt += f"。要求：{custom_req}"
                         
                         response = client.chat.completions.create(
-                            model="deepseek-ai/DeepSeek-V3",
+                            model=CONFIG['models']['generate'],
                             messages=[
                                 {"role": "system", "content": prompt},
                                 {"role": "user", "content": content}
@@ -519,7 +650,14 @@ with col2:
                         st.session_state.generated_result = response.choices[0].message.content
                         
                     except Exception as e:
-                        st.error(f"❌ 生成失败：{str(e)}")
+                        # v2.2.1 升级：使用错误分类
+                        error_info = classify_error(e)
+                        st.error(f"{error_info['title']}：{error_info['message']}")
+                        
+                        if error_info['type'] == 'auth':
+                            if st.button("🔄 重新输入密钥", key="reauth_gen"):
+                                del st.session_state.api_key
+                                st.rerun()
     
     with col_clear:
         if st.button("🗑️ 清空", use_container_width=True):
@@ -539,5 +677,6 @@ with col2:
             mime="text/plain"
         )
 
+# ========== v2.2.1 升级：统一版本号引用 ==========
 st.divider()
-st.caption("Made with ❤️ | 分享版 v2.2.0 - iOS 自动暗黑模式")
+st.caption(f"Made with ❤️ | 分享版 v{CONFIG['version']} - iOS 自动暗黑模式")
